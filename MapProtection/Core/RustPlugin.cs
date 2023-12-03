@@ -26,7 +26,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info(""MapProtection"", ""bmgjet & Skuli Dropek"", ""1.0.1"")]
+    [Info(""MapProtection"", ""bmgjet & FREE RUST"", ""1.0.1"")]
     [Description(""MapProtection"")]
     class MapProtection : RustPlugin
     {
