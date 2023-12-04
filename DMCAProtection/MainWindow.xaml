@@ -1,0 +1,15 @@
+﻿<Window x:Class="DMCAProtection.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:DMCAProtection"
+        mc:Ignorable="d"
+        Title="MainWindow" Height="450" Width="800">
+    <Grid>
+        <Button Content="DMCA Protection" HorizontalAlignment="Left" Margin="27,306,0,0" VerticalAlignment="Top" Height="103" Width="270" Click="Button_Click"/>
+        <Button Content="Find DMCA" HorizontalAlignment="Left" Margin="513,306,0,0" VerticalAlignment="Top" Height="103" Width="261" Click="Button_Click_1"/>
+        <TextBox x:Name="TextBox" HorizontalAlignment="Left" Margin="27,182,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="270" Height="94"/>
+        <TextBlock x:Name="TextBlock" HorizontalAlignment="Left" Margin="513,182,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Height="94" Width="261"/>
+    </Grid>
+</Window>

@@ -5,6 +5,8 @@ VisualStudioVersion = 17.6.33815.320
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MapProtection", "MapProtection\MapProtection.csproj", "{6E42A4A8-4D99-41E7-B65F-2D9970F9DA5A}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DMCAProtection", "DMCAProtection\DMCAProtection.csproj", "{296B1E0A-83B8-445E-B9E9-ED43BF4EA471}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,10 @@ Global
 		{6E42A4A8-4D99-41E7-B65F-2D9970F9DA5A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{6E42A4A8-4D99-41E7-B65F-2D9970F9DA5A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{6E42A4A8-4D99-41E7-B65F-2D9970F9DA5A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{296B1E0A-83B8-445E-B9E9-ED43BF4EA471}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{296B1E0A-83B8-445E-B9E9-ED43BF4EA471}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{296B1E0A-83B8-445E-B9E9-ED43BF4EA471}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{296B1E0A-83B8-445E-B9E9-ED43BF4EA471}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
