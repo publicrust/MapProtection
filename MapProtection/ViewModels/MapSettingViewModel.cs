@@ -156,7 +156,7 @@ namespace MapUnlock.ViewModels
         {
             Process.Start(new ProcessStartInfo
             {
-                FileName = "https://github.com/skulidropek/MapProtection",
+                FileName = "https://github.com/publicrust/MapProtection",
                 UseShellExecute = true
             });
         }
