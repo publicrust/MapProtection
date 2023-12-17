@@ -169,19 +169,23 @@ namespace MapUnlock.ViewModels
 
         private void ProcessProtection()
         {
+            if (!IsREProtectChecked)
+                return;
+
             //Remove RustEditData (Maps started from client folder will have no rust edit extention data)
             for (int i = _worldSerialization.world.maps.Count - 1; i >= 0; i--)
             {
-                if (System.Text.Encoding.Default.GetString(_worldSerialization.world.maps[i].data).StartsWith("<?xml version")) 
-                { 
+                if (System.Text.Encoding.Default.GetString(_worldSerialization.world.maps[i].data).StartsWith("<?xml version"))
+                {
                     _addRE.Add(
                         new RE().New(
-                            _worldSerialization.world.maps[i].name, 
-                            _worldSerialization.world.maps[i].data, 
+                            _worldSerialization.world.maps[i].name,
+                            _worldSerialization.world.maps[i].data,
                             _worldSerialization.world.prefabs.Count())
                         );
 
-                    _worldSerialization.world.maps.RemoveAt(i); }
+                    _worldSerialization.world.maps.RemoveAt(i);
+                }
             }
         }
 
@@ -189,39 +193,51 @@ namespace MapUnlock.ViewModels
         {
             for (int i = _worldSerialization.world.prefabs.Count - 1; i >= 0; i--)
             {
-                if (_prefabEntity.IsEntity(_worldSerialization.world.prefabs[i].id))
+                if (IsDeployProtectChecked)
                 {
-                    PrefabData p = _worldSerialization.world.prefabs[i];
-                    _addPrefabs.Add(new PA().New(p.id, p.category, p.position, p.rotation, p.scale));
-                    _worldSerialization.world.prefabs.RemoveAt(i);
-                    continue;
+                    if (_prefabEntity.IsEntity(_worldSerialization.world.prefabs[i].id))
+                    {
+                        PrefabData p = _worldSerialization.world.prefabs[i];
+                        _addPrefabs.Add(new PA().New(p.id, p.category, p.position, p.rotation, p.scale));
+                        _worldSerialization.world.prefabs.RemoveAt(i);
+                        continue;
+                    }
                 }
 
-                if (_worldSerialization.world.prefabs[i].id != 1724395471)
+                if (IsEditProtectChecked)
                 {
-                    _worldSerialization.world.prefabs[i].category = $":\\\\test black:{_rnd.Next(0, Math.Min(_worldSerialization.world.prefabs.Count, 40))}:";
+                    if (_worldSerialization.world.prefabs[i].id != 1724395471)
+                    {
+                        _worldSerialization.world.prefabs[i].category = $":\\\\test black:{_rnd.Next(0, Math.Min(_worldSerialization.world.prefabs.Count, 40))}:";
+                    }
                 }
             }
         }
 
         private void ProcessPumpJackOverflow()
         {
-            var pd = CreatePrefab(1599225199, new VectorData(), new VectorData(), new string('@', 200000000));
-            _deletePrefabs.Add(new PD().New(pd.id, pd.position));
-            _worldSerialization.world.prefabs.Add(pd);
+            if (IsEditProtectChecked)
+            {
+                var pd = CreatePrefab(1599225199, new VectorData(), new VectorData(), new string('@', 200000000));
+                _deletePrefabs.Add(new PD().New(pd.id, pd.position));
+                _worldSerialization.world.prefabs.Add(pd);
+            }
         }
 
         private void ProcessMapDataOverflow()
         {
-            if (_worldSerialization.GetMap("hieght") == null)
+            if (IsEditProtectChecked)
             {
-                _worldSerialization.AddMap("hieght", new byte[200000000]);
-            }
+                if (_worldSerialization.GetMap("hieght") == null)
+                {
+                    _worldSerialization.AddMap("hieght", new byte[200000000]);
+                }
 
-            var pd = CreatePrefab(1237378647, new VectorData(), new VectorData(), $":\\test black:1:");
-            _deletePrefabs.Add(new PD().New(pd.id, pd.position));
-            _worldSerialization.world.prefabs.Add(pd);
-            _worldSerialization.world.size = (uint)_rnd.Next(111111111, int.MaxValue);
+                var pd = CreatePrefab(1237378647, new VectorData(), new VectorData(), $":\\test black:1:");
+                _deletePrefabs.Add(new PD().New(pd.id, pd.position));
+                _worldSerialization.world.prefabs.Add(pd);
+                _worldSerialization.world.size = (uint)_rnd.Next(111111111, int.MaxValue);
+            }
         }
 
         private void ProcessSpamPrefabs()

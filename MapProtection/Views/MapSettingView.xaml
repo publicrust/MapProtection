@@ -35,7 +35,6 @@
                     <Style TargetType="CheckBox">
                         <Setter Property="Foreground" Value="#FFC3C3C3"/>
                         <Setter Property="FontSize" Value="14"/>
-
                     </Style>
                 </CheckBox.Style>
             </CheckBox>
