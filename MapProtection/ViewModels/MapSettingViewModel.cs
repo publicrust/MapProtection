@@ -1,5 +1,6 @@
 ﻿using Ionic.Zlib;
 using Library;
+using MapProtection.Core;
 using MapUnlock.Models;
 using Newtonsoft.Json;
 using Ookii.Dialogs.Wpf;
