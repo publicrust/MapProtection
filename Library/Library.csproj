@@ -1,35 +1,14 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0-windows7.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <UseWPF>true</UseWPF>
-    <ApplicationIcon>logo.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
-    <None Remove="Images\Background.jpg" />
-    <None Remove="Images\Logo.png" />
-    <None Remove="Images\СloseButton.png" />
-    <None Remove="ViewModels\MapSettingViewModel.cs~RF4dbdea.TMP" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Content Include="logo.ico" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <PackageReference Include="Ionic.Zip" Version="1.9.1.8" />
-    <PackageReference Include="MahApps.Metro" Version="2.4.10" />
-    <PackageReference Include="MahApps.Metro.Resources" Version="0.6.1" />
-    <PackageReference Include="MaterialDesignThemes" Version="4.9.0" />
+    <PackageReference Include="Ionic.Zlib.Core" Version="1.0.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-    <PackageReference Include="Ookii.Dialogs.Wpf" Version="5.0.1" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\Library\Library.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -54,13 +33,6 @@
     <Reference Include="UnityEngine.SharedInternalsModule">
       <HintPath>Facepanch\UnityEngine\UnityEngine.SharedInternalsModule.dll</HintPath>
     </Reference>
-  </ItemGroup>
-
-  <ItemGroup>
-    <Resource Include="Images\Background.jpg" />
-    <Resource Include="Images\Logo.png" />
-    <Resource Include="Images\СloseButton.png" />
-
   </ItemGroup>
 
 </Project>

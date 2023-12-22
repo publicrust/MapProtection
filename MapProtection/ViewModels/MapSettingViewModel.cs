@@ -1,4 +1,5 @@
 ﻿using Ionic.Zlib;
+using Library;
 using MapProtection.Extension;
 using MapUnlock.Core;
 using MapUnlock.Extension;
@@ -15,23 +16,14 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
-using static WorldSerialization;
 
 namespace MapUnlock.ViewModels
 {
     internal class MapSettingViewModel : ViewModelBase
     {
-        private WorldSerialization _worldSerialization = new WorldSerialization();
+        private Map _map = new Map();
         private string _path;
-        private Random _rnd = new Random();
-        private int _size = 0;
-        private readonly PrefabEntity _prefabEntity = new PrefabEntity();
-        private readonly RustPlugin _rustPlugin = new RustPlugin();
-        private List<RE> _addRE = new List<RE>();
-        private List<PA> _addPrefabs = new List<PA>();
-        private List<PD> _deletePrefabs = new List<PD>();
-        private int _startPrefabsCount;
-
+        
         private bool _isAddProtectionEnabled = true;
         private string _spamAmount = "5000";
         private bool _isREProtectChecked = true;
@@ -114,10 +106,6 @@ namespace MapUnlock.ViewModels
 
         private void SelectMapCommandExecute(object obj)
         {
-            _addRE = new List<RE>();
-            _addPrefabs = new List<PA>();
-            _deletePrefabs = new List<PD>();
-
             MapFile = GetPathOpenFileDialog();
 
             if (string.IsNullOrEmpty(MapFile))
@@ -135,15 +123,20 @@ namespace MapUnlock.ViewModels
                 return;
             }
 
-            LoadWorldData();
+            var spamAmount = 0;
 
-            ProcessPrefabs();
-            ProcessPumpJackOverflow();
-            ProcessMapDataOverflow();
-            ProcessSpamPrefabs();
-            ShufflePrefabList();
-            PatchAndSavePluginFile(); 
-            
+            int.TryParse(SpamAmount, out spamAmount);
+
+            _map.Protect(_path, new Library.Models.MapProtectOptions()
+            {
+                IsAddProtectionEnabled = IsAddProtectionEnabled,
+                SpamAmount = spamAmount,
+                IsDeployProtectChecked = IsDeployProtectChecked,
+                IsEditProtectChecked = IsEditProtectChecked,
+                IsREProtectChecked = IsREProtectChecked,
+            });
+
+            MessageBox.Show($"Save for path {_path + "protection.map"}");
         }
 
         private void OpenDiscordCommandExecute(object obj)
@@ -162,172 +155,6 @@ namespace MapUnlock.ViewModels
                 FileName = "https://github.com/publicrust/MapProtection",
                 UseShellExecute = true
             });
-        }
-
-        private void LoadWorldData()
-        {
-            _worldSerialization.Load(_path);
-
-            _startPrefabsCount = _worldSerialization.world.prefabs.Count;
-
-            _size = (int)_worldSerialization.world.size;
-        }
-
-        private void ProcessProtection()
-        {
-            if (!IsREProtectChecked)
-                return;
-
-            //Remove RustEditData (Maps started from client folder will have no rust edit extention data)
-            for (int i = _worldSerialization.world.maps.Count - 1; i >= 0; i--)
-            {
-                //NCc6LRYRaClFr7Z5nxivvPvk+s/t3Oh+tTtBXZA4pBM=
-                if (Encoding.Default.GetString(_worldSerialization.world.maps[i].data).StartsWith("<?xml version"))
-                {
-                    var blob = WorldManager.FindBlob(_worldSerialization.world.maps[i].name, _startPrefabsCount);
-
-                    _addRE.Add(
-                        new RE().New(
-                            string.IsNullOrWhiteSpace(blob)
-                            ?
-                                _worldSerialization.world.maps[i].name
-                            :
-                                WorldManager.Encrypt(blob, _worldSerialization.world.prefabs.Count),
-                            _worldSerialization.world.maps[i].data,
-                            _worldSerialization.world.prefabs.Count)
-                        );
-
-                    _worldSerialization.world.maps.RemoveAt(i);
-                }
-            }
-        }
-
-        private void ProcessPrefabs()
-        {
-            for (int i = _worldSerialization.world.prefabs.Count - 1; i >= 0; i--)
-            {
-                if (IsDeployProtectChecked)
-                {
-                    if (_prefabEntity.IsEntity(_worldSerialization.world.prefabs[i].id))
-                    {
-                        PrefabData p = _worldSerialization.world.prefabs[i];
-                        _addPrefabs.Add(new PA().New(p.id, p.category, p.position, p.rotation, p.scale));
-                        _worldSerialization.world.prefabs.RemoveAt(i);
-                        continue;
-                    }
-                }
-
-                if (IsEditProtectChecked)
-                {
-                    if (_worldSerialization.world.prefabs[i].id != 1724395471)
-                    {
-                        _worldSerialization.world.prefabs[i].category = $":\\\\test black:{_rnd.Next(0, Math.Min(_worldSerialization.world.prefabs.Count, 40))}:";
-                    }
-                }
-            }
-        }
-
-        private void ProcessPumpJackOverflow()
-        {
-            if (IsEditProtectChecked)
-            {
-                var pd = CreatePrefab(1599225199, new VectorData(), new VectorData(), new string('@', 200000000));
-                _deletePrefabs.Add(new PD().New(pd.id, pd.position));
-                _worldSerialization.world.prefabs.Add(pd);
-            }
-        }
-
-        private void ProcessMapDataOverflow()
-        {
-            if (IsEditProtectChecked)
-            {
-                if (_worldSerialization.GetMap("hieght") == null)
-                {
-                    _worldSerialization.AddMap("hieght", new byte[200000000]);
-                }
-
-                var pd = CreatePrefab(1237378647, new VectorData(), new VectorData(), $":\\test black:1:");
-                _deletePrefabs.Add(new PD().New(pd.id, pd.position));
-                _worldSerialization.world.prefabs.Add(pd);
-                _worldSerialization.world.size = (uint)_rnd.Next(111111111, int.MaxValue);
-            }
-        }
-
-        private void ProcessSpamPrefabs()
-        {
-            if (int.TryParse(SpamAmount.Split(" ").Last(), out int spam))
-            {
-                for (int i = 0; i < spam; i++)
-                {
-                    VectorData position;
-                    VectorData rotation;
-
-                    if (_worldSerialization.world.prefabs.Count > i)
-                    {
-                        position = _worldSerialization.world.prefabs[i].position;
-                        rotation = _worldSerialization.world.prefabs[i].rotation;
-                    }
-                    else
-                    {
-                        position = new VectorData(_rnd.Next(_size / 3 * -1, _size / 3), _rnd.Next(-60, 300), _rnd.Next(_size / 3 * -1, _size / 3));
-                        rotation = new VectorData(_rnd.Next(0, 359), _rnd.Next(0, 359), _rnd.Next(0, 359));
-                    }
-
-                    PrefabData p = CreatePrefab(_prefabEntity.Esnts[_rnd.Next(0, _prefabEntity.Esnts.Count() - 1)], position, rotation);
-                    _deletePrefabs.Add(new PD().New(p.id, p.position));
-                    _worldSerialization.world.prefabs.Add(p);
-                }
-            }
-        }
-
-        private void ShufflePrefabList()
-        {
-            _worldSerialization.world.prefabs = ShufflePrefabs(_worldSerialization.world.prefabs);
-        }
-
-        private void PatchAndSavePluginFile()
-        {
-            ProcessProtection();
-
-            string pluginFilePath = Path.Combine(Path.GetDirectoryName(_path), "MapProtection.cs");
-            string pluginContent = _rustPlugin.Plugin
-                .Replace("%SIZE%", $"{_size}")
-                .Replace("%ADDKEY%", Convert.ToBase64String(Compression.Compress(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(_addPrefabs)))))
-                .Replace("%REKEY%", Convert.ToBase64String(Compression.Compress(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(_addRE)))))
-                .Replace("%PREFABKEY%", Convert.ToBase64String(Compression.Compress(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(_deletePrefabs)))))
-                .Replace("\"", "\"\"")
-                .Replace(@"""""", @"""")
-                ;
-
-            File.WriteAllText(pluginFilePath, pluginContent);
-            _worldSerialization.UpdatePassword();
-            _worldSerialization.Save(_path + "protection.map");
-            MessageBox.Show($"Save for path {_path + "protection.map"}");
-        }
-
-        private PrefabData CreatePrefab(uint PrefabID, VectorData posistion, VectorData rotation, string category = ":\\test black:1:")
-        {
-            var prefab = new PrefabData()
-            {
-                category = category,
-                id = PrefabID,
-                position = posistion,
-                rotation = rotation,
-                scale = new VectorData(1, 1, 1)
-            };
-            return prefab;
-        }
-
-        private List<PrefabData> ShufflePrefabs(List<PrefabData> listToShuffle)
-        {
-            for (int i = listToShuffle.Count - 1; i > 0; i--)
-            {
-                int k = _rnd.Next(i + 1);
-                var value = listToShuffle[k];
-                listToShuffle[k] = listToShuffle[i];
-                listToShuffle[i] = value;
-            }
-            return listToShuffle;
         }
 
         private string GetPathOpenFileDialog()
