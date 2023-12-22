@@ -32,7 +32,7 @@ namespace Library
             _options = options;
 
             LoadWorldData();
-
+            ProcessProtection();
             ProcessPrefabs();
             ProcessPumpJackOverflow();
             ProcessMapDataOverflow();
@@ -163,8 +163,6 @@ namespace Library
 
         private void PatchAndSavePluginFile()
         {
-            ProcessProtection();
-
             string pluginFilePath = Path.Combine(Path.GetDirectoryName(_path), "MapProtection.cs");
             string pluginContent = RustPlugin.Plugin
                 .Replace("%SIZE%", $"{_size}")
