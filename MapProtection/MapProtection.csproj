@@ -33,30 +33,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Reference Include="LZ4">
-      <HintPath>Facepanch\LZ4\LZ4.dll</HintPath>
-    </Reference>
-    <Reference Include="LZ4pn">
-      <HintPath>Facepanch\LZ4\LZ4pn.dll</HintPath>
-    </Reference>
-    <Reference Include="protobuf-net">
-      <HintPath>Facepanch\Protobuf\protobuf-net.dll</HintPath>
-    </Reference>
-    <Reference Include="UnityEngine">
-      <HintPath>Facepanch\UnityEngine\UnityEngine.dll</HintPath>
-    </Reference>
-    <Reference Include="UnityEngine.CoreModule">
-      <HintPath>Facepanch\UnityEngine\UnityEngine.CoreModule.dll</HintPath>
-    </Reference>
-    <Reference Include="UnityEngine.PhysicsModule">
-      <HintPath>Facepanch\UnityEngine\UnityEngine.PhysicsModule.dll</HintPath>
-    </Reference>
-    <Reference Include="UnityEngine.SharedInternalsModule">
-      <HintPath>Facepanch\UnityEngine\UnityEngine.SharedInternalsModule.dll</HintPath>
-    </Reference>
-  </ItemGroup>
-
-  <ItemGroup>
     <Resource Include="Images\Background.jpg" />
     <Resource Include="Images\Logo.png" />
     <Resource Include="Images\СloseButton.png" />
