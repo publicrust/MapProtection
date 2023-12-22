@@ -1,4 +1,5 @@
 ﻿using Ionic.Zlib;
+using MapProtection.Extension;
 using MapUnlock.Core;
 using MapUnlock.Extension;
 using MapUnlock.Models;
@@ -29,6 +30,7 @@ namespace MapUnlock.ViewModels
         private List<RE> _addRE = new List<RE>();
         private List<PA> _addPrefabs = new List<PA>();
         private List<PD> _deletePrefabs = new List<PD>();
+        private int _startPrefabsCount;
 
         private bool _isAddProtectionEnabled = true;
         private string _spamAmount = "5000";
@@ -134,13 +136,14 @@ namespace MapUnlock.ViewModels
             }
 
             LoadWorldData();
-            ProcessProtection();
+
             ProcessPrefabs();
             ProcessPumpJackOverflow();
             ProcessMapDataOverflow();
             ProcessSpamPrefabs();
             ShufflePrefabList();
-            PatchAndSavePluginFile();
+            PatchAndSavePluginFile(); 
+            
         }
 
         private void OpenDiscordCommandExecute(object obj)
@@ -164,6 +167,9 @@ namespace MapUnlock.ViewModels
         private void LoadWorldData()
         {
             _worldSerialization.Load(_path);
+
+            _startPrefabsCount = _worldSerialization.world.prefabs.Count;
+
             _size = (int)_worldSerialization.world.size;
         }
 
@@ -175,13 +181,20 @@ namespace MapUnlock.ViewModels
             //Remove RustEditData (Maps started from client folder will have no rust edit extention data)
             for (int i = _worldSerialization.world.maps.Count - 1; i >= 0; i--)
             {
-                if (System.Text.Encoding.Default.GetString(_worldSerialization.world.maps[i].data).StartsWith("<?xml version"))
+                //NCc6LRYRaClFr7Z5nxivvPvk+s/t3Oh+tTtBXZA4pBM=
+                if (Encoding.Default.GetString(_worldSerialization.world.maps[i].data).StartsWith("<?xml version"))
                 {
+                    var blob = WorldManager.FindBlob(_worldSerialization.world.maps[i].name, _startPrefabsCount);
+
                     _addRE.Add(
                         new RE().New(
-                            _worldSerialization.world.maps[i].name,
+                            string.IsNullOrWhiteSpace(blob)
+                            ?
+                                _worldSerialization.world.maps[i].name
+                            :
+                                WorldManager.Encrypt(blob, _worldSerialization.world.prefabs.Count),
                             _worldSerialization.world.maps[i].data,
-                            _worldSerialization.world.prefabs.Count())
+                            _worldSerialization.world.prefabs.Count)
                         );
 
                     _worldSerialization.world.maps.RemoveAt(i);
@@ -274,6 +287,8 @@ namespace MapUnlock.ViewModels
 
         private void PatchAndSavePluginFile()
         {
+            ProcessProtection();
+
             string pluginFilePath = Path.Combine(Path.GetDirectoryName(_path), "MapProtection.cs");
             string pluginContent = _rustPlugin.Plugin
                 .Replace("%SIZE%", $"{_size}")

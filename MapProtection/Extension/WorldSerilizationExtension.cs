@@ -1,4 +1,5 @@
-﻿using System;
+﻿using MapProtection.Extension;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -17,7 +18,7 @@ namespace MapUnlock.Extension
             if (passwordMap == null)
             {
                 int prefabCount = worldSerialization.world.prefabs.Count;
-                string encryptedPassword = EncryptPassword("mappassword", prefabCount);
+                string encryptedPassword = WorldManager.Encrypt("mappassword", prefabCount);
 
                 worldSerialization.world.maps.Add(new WorldSerialization.MapData()
                 {
@@ -40,33 +41,8 @@ namespace MapUnlock.Extension
         {
             int prefabCount = worldSerialization.world.prefabs.Count;
             return worldSerialization.world.maps.FirstOrDefault(map =>
-                map.name == DecryptPassword("mappassword", prefabCount) || map.name == EncryptPassword("mappassword", prefabCount)
+                map.name == DecryptPassword("mappassword", prefabCount) || map.name == WorldManager.Encrypt("mappassword", prefabCount)
             );
-        }
-
-        private static string EncryptPassword(string inputString, int key)
-        {
-            string password = key.ToString();
-            byte[] bytes = Encoding.Unicode.GetBytes(inputString);
-            using (Aes aes = Aes.Create())
-            {
-                Rfc2898DeriveBytes pwdGen = new Rfc2898DeriveBytes(password, new byte[]
-                {
-                    73, 118, 97, 110, 32, 77, 101, 100, 118, 101, 100, 101, 118
-                });
-                aes.Key = pwdGen.GetBytes(32);
-                aes.IV = pwdGen.GetBytes(16);
-                using (MemoryStream memoryStream = new MemoryStream())
-                {
-                    using (CryptoStream cryptoStream = new CryptoStream(memoryStream, aes.CreateEncryptor(), CryptoStreamMode.Write))
-                    {
-                        cryptoStream.Write(bytes, 0, bytes.Length);
-                        cryptoStream.Close();
-                    }
-                    inputString = Convert.ToBase64String(memoryStream.ToArray());
-                }
-            }
-            return inputString;
         }
 
         private static string DecryptPassword(string inputString, int key)
