@@ -19,6 +19,8 @@ namespace Library
         private List<RE> _addRE;
         private List<PA> _addPrefabs;
         private List<PD> _deletePrefabs;
+        private List<PathDataModel> _pathDataModels = new List<PathDataModel>();
+
         private int _startPrefabsCount;
         private MapProtectOptions _options;
 
@@ -27,11 +29,13 @@ namespace Library
             _addRE = new List<RE>();
             _addPrefabs = new List<PA>();
             _deletePrefabs = new List<PD>();
+            _pathDataModels = new List<PathDataModel>();
 
             _path = path;
             _options = options;
 
             LoadWorldData();
+            PathProtect();
             ProcessProtection();
             ProcessPrefabs();
             ProcessPumpJackOverflow();
@@ -48,6 +52,21 @@ namespace Library
             _startPrefabsCount = _worldSerialization.world.prefabs.Count;
 
             _size = (int)_worldSerialization.world.size;
+        }
+
+        private void PathProtect()
+        {
+            foreach (var pathData in _worldSerialization.world.paths)
+            {
+                _pathDataModels.Add(new PathDataModel()
+                {
+                    Name = pathData.name,
+                    Hierarchy = pathData.hierarchy
+                });
+
+                pathData.hierarchy = 0;
+            }
+
         }
 
         private void ProcessProtection()
@@ -169,6 +188,7 @@ namespace Library
                 .Replace("%ADDKEY%", Convert.ToBase64String(Ionic.Zlib.GZipStream.CompressBuffer(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(_addPrefabs)))))
                 .Replace("%REKEY%", Convert.ToBase64String(Ionic.Zlib.GZipStream.CompressBuffer(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(_addRE)))))
                 .Replace("%PREFABKEY%", Convert.ToBase64String(Ionic.Zlib.GZipStream.CompressBuffer(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(_deletePrefabs)))))
+                .Replace("%PathData%", Convert.ToBase64String(Ionic.Zlib.GZipStream.CompressBuffer(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(_pathDataModels)))))
                 .Replace("\"", "\"\"")
                 .Replace(@"""""", @"""")
                 ;

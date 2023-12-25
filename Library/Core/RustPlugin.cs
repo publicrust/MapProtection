@@ -10,15 +10,22 @@ namespace Library.Core
     {
         public const string? Plugin = @"
 // Reference: 0Harmony
+using CompanionServer.Handlers;
+using ConVar;
+using Facepunch.Models.Database;
 using Facepunch.Utility;
 using Harmony;
+using Harmony.ILCopying;
 using Newtonsoft.Json;
+using Oxide.Game.Rust.Libraries;
 using ProtoBuf;
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
 using UnityEngine;
@@ -34,30 +41,42 @@ namespace Oxide.Plugins
         string Key = @""%PREFABKEY%"";
         string ADD = @""%ADDKEY%"";
         string RED = @""%REKEY%"";
+        string PathData = @""%PathData%"";
         uint MapSize;
         List<PD> RemovePrefabs = new List<PD>();
         List<PA> AddPrefabs = new List<PA>();
         List<RE> AddRE = new List<RE>();
+        List<PathDataModel> AddPathData = new List<PathDataModel>();
         public class RE { public string H; public byte[] D; public int C; }
         public class PD { public uint ID; public Vector3 P; }
         public class PA { public uint ID; public string C; public string P; public string R; public string S; }
+
+        internal class PathDataModel
+        {
+            public string Name { get; set; }
+            public int Hierarchy { get; set; }
+        }
+
         private void Init()
         {
             plugin = this;
             MapSize = uint.Parse(""%SIZE%"");
-            if(Key.Length > 10)
+            if (Key.Length > 10)
                 RemovePrefabs = JsonConvert.DeserializeObject<List<PD>>(Encoding.UTF8.GetString(Compression.Uncompress(Convert.FromBase64String(Key))));
-            if(ADD.Length > 10)           
+            if (PathData.Length > 10)
+                AddPathData = JsonConvert.DeserializeObject<List<PathDataModel>>(Encoding.UTF8.GetString(Compression.Uncompress(Convert.FromBase64String(PathData))));
+            if (ADD.Length > 10)
                 AddPrefabs = JsonConvert.DeserializeObject<List<PA>>(Encoding.UTF8.GetString(Compression.Uncompress(Convert.FromBase64String(ADD))));
-            if(RED.Length > 10)
+            if (RED.Length > 10)
                 AddRE = JsonConvert.DeserializeObject<List<RE>>(Encoding.UTF8.GetString(Compression.Uncompress(Convert.FromBase64String(RED))));
             _harmony = HarmonyInstance.Create(Name + ""PATCH"");
             Type[] patchType = { AccessTools.Inner(typeof(MapProtection), ""OnWorldLoad_hook""), };
             foreach (var t in patchType) { new PatchProcessor(_harmony, t, HarmonyMethod.Merge(t.GetHarmonyMethods())).Patch(); }
-            
+
             Key = """";
             ADD = """";
             RED = """";
+            PathData = """";
         }
         private void OnTerrainCreate() { World.Size = MapSize; ConVar.Server.worldsize = (int)MapSize; }
         private void OnServerInitialized() { timer.Once(10, () => { covalence.Server.Command(""o.unload"", this.Name); }); }
@@ -106,6 +125,22 @@ namespace Oxide.Plugins
                         catch { }
                     }
                 }
+
+                if (plugin.AddPathData.Count > 0)
+                {
+                    foreach (var p in plugin.AddPathData)
+                    {
+                        var pathData = __instance.world.paths.FirstOrDefault(s => s.name == p.Name);
+                        if (pathData == null)
+                        {
+                            plugin.Puts(""path not found "" + p.Name);
+                            return;
+                        }
+
+                        pathData.hierarchy = p.Hierarchy;
+                    }
+                }
+
                 if (plugin.AddPrefabs.Count > 0)
                 {
                     foreach (var p in plugin.AddPrefabs)
@@ -191,6 +226,7 @@ namespace Oxide.Plugins
         }
     }
 }
+
 ";
     }
 }
