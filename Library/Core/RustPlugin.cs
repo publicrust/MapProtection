@@ -8,7 +8,7 @@ namespace Library.Core
 {
     public static class RustPlugin
     {
-        public const string? Plugin = @"
+        public const string Plugin = @"
 // Reference: 0Harmony
 using CompanionServer.Handlers;
 using ConVar;
