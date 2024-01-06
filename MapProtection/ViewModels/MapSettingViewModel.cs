@@ -144,7 +144,7 @@ namespace MapUnlock.ViewModels
         {
             Process.Start(new ProcessStartInfo
             {
-                FileName = "https://discord.gg/k3Hxq9v9",
+                FileName = "https://discord.gg/Qr59w6YRk6",
                 UseShellExecute = true
             });
         }
