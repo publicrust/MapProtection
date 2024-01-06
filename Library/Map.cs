@@ -12,9 +12,9 @@ namespace Library
 {
     public class Map
     {
-        private WorldSerialization _worldSerialization = new WorldSerialization();
+        private readonly WorldSerialization _worldSerialization = new WorldSerialization();
         private string _path;
-        private Random _rnd = new Random();
+        private readonly Random _rnd = new Random();
         private int _size = 0;
         private List<RE> _addRE;
         private List<PA> _addPrefabs;
