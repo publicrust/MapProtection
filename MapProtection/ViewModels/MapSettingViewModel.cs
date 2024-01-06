@@ -18,7 +18,6 @@ namespace MapUnlock.ViewModels
 {
     internal class MapSettingViewModel : ViewModelBase
     {
-        private Map _map = new Map();
         private string _path;
         
         private bool _isAddProtectionEnabled = true;
@@ -119,9 +118,9 @@ namespace MapUnlock.ViewModels
                 return;
             }
 
-            var spamAmount = 0;
-
-            int.TryParse(SpamAmount, out spamAmount);
+            if(!int.TryParse(SpamAmount, out int spamAmount))
+                spamAmount = 0;
+            Map _map = new Map();
 
             var result = _map.Protect(_path, new Library.Models.MapProtectOptions()
             {
