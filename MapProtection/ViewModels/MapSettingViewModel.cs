@@ -120,11 +120,11 @@ namespace MapUnlock.ViewModels
 
             if(!int.TryParse(SpamAmount, out int spamAmount))
                 spamAmount = 0;
+
             Map _map = new Map();
 
             var result = _map.Protect(_path, new Library.Models.MapProtectOptions()
             {
-                IsAddProtectionEnabled = IsAddProtectionEnabled,
                 SpamAmount = spamAmount,
                 IsDeployProtectChecked = IsDeployProtectChecked,
                 IsEditProtectChecked = IsEditProtectChecked,
