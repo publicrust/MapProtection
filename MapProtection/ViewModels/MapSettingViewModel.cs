@@ -108,7 +108,6 @@ namespace MapUnlock.ViewModels
             if (string.IsNullOrEmpty(MapFile))
             {
                 MessageBox.Show("Need choose path");
-                return;
             }
         }
 
@@ -124,7 +123,7 @@ namespace MapUnlock.ViewModels
 
             int.TryParse(SpamAmount, out spamAmount);
 
-            _map.Protect(_path, new Library.Models.MapProtectOptions()
+            var result = _map.Protect(_path, new Library.Models.MapProtectOptions()
             {
                 IsAddProtectionEnabled = IsAddProtectionEnabled,
                 SpamAmount = spamAmount,
@@ -132,6 +131,12 @@ namespace MapUnlock.ViewModels
                 IsEditProtectChecked = IsEditProtectChecked,
                 IsREProtectChecked = IsREProtectChecked,
             });
+
+            string pluginFilePath = Path.Combine(Path.GetDirectoryName(_path), "MapProtection.cs");
+
+            File.WriteAllText(pluginFilePath, result.Plugin);
+
+            result.Map.Save(_path + "protection.map");
 
             MessageBox.Show($"Save for path {_path + "protection.map"}");
         }

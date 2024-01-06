@@ -24,7 +24,7 @@ namespace Library
         private int _startPrefabsCount;
         private MapProtectOptions _options;
 
-        public void Protect(string path, MapProtectOptions options)
+        public ResultModel Protect(string path, MapProtectOptions options)
         {
             _addRE = new List<RE>();
             _addPrefabs = new List<PA>();
@@ -42,7 +42,26 @@ namespace Library
             ProcessMapDataOverflow();
             ProcessSpamPrefabs();
             ShufflePrefabList();
-            PatchAndSavePluginFile();
+
+            string pluginContent = RustPlugin.Plugin
+                .Replace("%SIZE%", $"{_size}")
+                .Replace("%ADDKEY%", Convert.ToBase64String(Ionic.Zlib.GZipStream.CompressBuffer(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(_addPrefabs)))))
+                .Replace("%REKEY%", Convert.ToBase64String(Ionic.Zlib.GZipStream.CompressBuffer(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(_addRE)))))
+                .Replace("%PREFABKEY%", Convert.ToBase64String(Ionic.Zlib.GZipStream.CompressBuffer(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(_deletePrefabs)))))
+                .Replace("%PathData%", Convert.ToBase64String(Ionic.Zlib.GZipStream.CompressBuffer(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(_pathDataModels)))))
+                .Replace("\"", "\"\"")
+                .Replace(@"""""", @"""")
+                ;
+
+
+            _worldSerialization.UpdatePassword();
+
+            return new ResultModel()
+            {
+                Map = _worldSerialization,
+                Plugin = pluginContent,
+            };
+
         }
 
         private void LoadWorldData()
@@ -182,20 +201,7 @@ namespace Library
 
         private void PatchAndSavePluginFile()
         {
-            string pluginFilePath = Path.Combine(Path.GetDirectoryName(_path), "MapProtection.cs");
-            string pluginContent = RustPlugin.Plugin
-                .Replace("%SIZE%", $"{_size}")
-                .Replace("%ADDKEY%", Convert.ToBase64String(Ionic.Zlib.GZipStream.CompressBuffer(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(_addPrefabs)))))
-                .Replace("%REKEY%", Convert.ToBase64String(Ionic.Zlib.GZipStream.CompressBuffer(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(_addRE)))))
-                .Replace("%PREFABKEY%", Convert.ToBase64String(Ionic.Zlib.GZipStream.CompressBuffer(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(_deletePrefabs)))))
-                .Replace("%PathData%", Convert.ToBase64String(Ionic.Zlib.GZipStream.CompressBuffer(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(_pathDataModels)))))
-                .Replace("\"", "\"\"")
-                .Replace(@"""""", @"""")
-                ;
-
-            File.WriteAllText(pluginFilePath, pluginContent);
-            _worldSerialization.UpdatePassword();
-            _worldSerialization.Save(_path + "protection.map");
+            
         }
 
         private PrefabData CreatePrefab(uint PrefabID, VectorData posistion, VectorData rotation, string category = ":\\test black:1:")
