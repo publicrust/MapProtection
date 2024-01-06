@@ -41,7 +41,8 @@ namespace Library
             ProcessPumpJackOverflow();
             ProcessMapDataOverflow();
             ProcessSpamPrefabs();
-            ShufflePrefabList();
+
+            _worldSerialization.world.prefabs = _worldSerialization.world.prefabs.ShufflePrefabs();
 
             string pluginContent = RustPlugin.Plugin
                 .Replace("%SIZE%", $"{_size}")
@@ -188,15 +189,10 @@ namespace Library
                     rotation = new VectorData(_rnd.Next(0, 359), _rnd.Next(0, 359), _rnd.Next(0, 359));
                 }
 
-                PrefabData p = CreatePrefab(PrefabDataExtensions.Entitys[_rnd.Next(0, PrefabDataExtensions.Entitys.Count() - 1)], position, rotation);
+                PrefabData p = CreatePrefab(PrefabDataExtensions.Entitys[_rnd.Next(0, PrefabDataExtensions.Entitys.Count - 1)], position, rotation);
                 _deletePrefabs.Add(new PD().New(p.id, p.position));
                 _worldSerialization.world.prefabs.Add(p);
             }
-        }
-
-        private void ShufflePrefabList()
-        {
-            _worldSerialization.world.prefabs = ShufflePrefabs(_worldSerialization.world.prefabs);
         }
 
         private PrefabData CreatePrefab(uint PrefabID, VectorData posistion, VectorData rotation, string category = ":\\test black:1:")
@@ -209,19 +205,8 @@ namespace Library
                 rotation = rotation,
                 scale = new VectorData(1, 1, 1)
             };
-            return prefab;
-        }
 
-        private List<PrefabData> ShufflePrefabs(List<PrefabData> listToShuffle)
-        {
-            for (int i = listToShuffle.Count - 1; i > 0; i--)
-            {
-                int k = _rnd.Next(i + 1);
-                var value = listToShuffle[k];
-                listToShuffle[k] = listToShuffle[i];
-                listToShuffle[i] = value;
-            }
-            return listToShuffle;
+            return prefab;
         }
     }
 }
