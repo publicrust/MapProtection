@@ -128,7 +128,7 @@ namespace MapUnlock.ViewModels
                 SpamAmount = spamAmount,
                 IsDeployProtectChecked = IsDeployProtectChecked,
                 IsEditProtectChecked = IsEditProtectChecked,
-                IsREProtectChecked = IsREProtectChecked,
+                IsRustEditDataProtectChecked = IsREProtectChecked,
             });
 
             string pluginFilePath = Path.Combine(Path.GetDirectoryName(_path), "MapProtection.cs");

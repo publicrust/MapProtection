@@ -72,6 +72,9 @@ namespace Library
 
         private void PathProtect()
         {
+            if (!_options.IsRustEditDataProtectChecked)
+                return;
+
             foreach (var pathData in _worldSerialization.world.paths)
             {
                 _pathDataModels.Add(new PathDataModel()
@@ -87,7 +90,7 @@ namespace Library
 
         private void ProcessProtection()
         {
-            if (!_options.IsREProtectChecked)
+            if (!_options.IsRustEditDataProtectChecked)
                 return;
 
             //Remove RustEditData (Maps started from client folder will have no rust edit extention data)
