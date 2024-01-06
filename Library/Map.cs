@@ -199,11 +199,6 @@ namespace Library
             _worldSerialization.world.prefabs = ShufflePrefabs(_worldSerialization.world.prefabs);
         }
 
-        private void PatchAndSavePluginFile()
-        {
-            
-        }
-
         private PrefabData CreatePrefab(uint PrefabID, VectorData posistion, VectorData rotation, string category = ":\\test black:1:")
         {
             var prefab = new PrefabData()
