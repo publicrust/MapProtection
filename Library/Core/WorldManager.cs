@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace Library.Core
 {
-    internal class WorldManager
+    internal static class WorldManager
     {
         public static List<string> BlobIdentifiers = new List<string>()
         {
