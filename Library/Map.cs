@@ -134,7 +134,7 @@ namespace Library
 
                 if (_options.IsEditProtectChecked)
                 {
-                    if (_worldSerialization.world.prefabs[i].id != 1724395471 && !_worldSerialization.world.prefabs[i].category.StartsWith(":::"))
+                    if (_worldSerialization.world.prefabs[i].id != 1724395471)
                     {
                         _worldSerialization.world.prefabs[i].category = $":\\\\test black:{_rnd.Next(0, Math.Min(_worldSerialization.world.prefabs.Count, 40))}:";
                     }
