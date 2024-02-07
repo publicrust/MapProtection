@@ -12,25 +12,29 @@ namespace Library
         private string _path;
         private readonly Random _rnd = new Random();
         private int _size = 0;
-        private List<RE> _addRE;
-        private List<PA> _addPrefabs;
-        private List<PD> _deletePrefabs;
-        private List<PathDataModel> _pathDataModels = new List<PathDataModel>();
+        private RootModel _root = new RootModel();
 
         private int _startPrefabsCount;
         private MapProtectOptions _options;
 
         public ResultModel Protect(string path, MapProtectOptions options)
         {
-            _addRE = new List<RE>();
-            _addPrefabs = new List<PA>();
-            _deletePrefabs = new List<PD>();
-            _pathDataModels = new List<PathDataModel>();
+            _root.AddRE = new List<RE>();
+            _root.AddPrefabs = new List<PA>();
+            _root.RemovePrefabs = new List<PD>();
+            _root.AllPrefabs = new List<PA>();
+            _root.AddPathData = new List<PathDataModel>();
 
             _path = path;
             _options = options;
 
             LoadWorldData();
+
+            foreach(var prefab in _worldSerialization.world.prefabs)
+            {
+                _root.AllPrefabs.Add(new PA().New(prefab.id, prefab.category, prefab.position, prefab.rotation, prefab.scale));
+            }
+
             PathProtect();
             ProcessProtection();
             ProcessPrefabs();
@@ -42,10 +46,7 @@ namespace Library
 
             string pluginContent = RustPlugin.Plugin
                 .Replace("%SIZE%", $"{_size}")
-                .Replace("%ADDKEY%", Convert.ToBase64String(Ionic.Zlib.GZipStream.CompressBuffer(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(_addPrefabs)))))
-                .Replace("%REKEY%", Convert.ToBase64String(Ionic.Zlib.GZipStream.CompressBuffer(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(_addRE)))))
-                .Replace("%PREFABKEY%", Convert.ToBase64String(Ionic.Zlib.GZipStream.CompressBuffer(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(_deletePrefabs)))))
-                .Replace("%PathData%", Convert.ToBase64String(Ionic.Zlib.GZipStream.CompressBuffer(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(_pathDataModels)))))
+                .Replace("%ROOT%", Convert.ToBase64String(Ionic.Zlib.GZipStream.CompressBuffer(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(_root)))))
                 .Replace("\"", "\"\"")
                 .Replace(@"""""", @"""")
                 ;
@@ -77,7 +78,7 @@ namespace Library
 
             foreach (var pathData in _worldSerialization.world.paths)
             {
-                _pathDataModels.Add(new PathDataModel()
+                _root.AddPathData.Add(new PathDataModel()
                 {
                     Name = pathData.name,
                     Hierarchy = pathData.hierarchy
@@ -100,7 +101,7 @@ namespace Library
                 {
                     var blob = WorldManager.FindBlob(_worldSerialization.world.maps[i].name, _startPrefabsCount);
 
-                    _addRE.Add(
+                    _root.AddRE.Add(
                         new RE().New(
                             string.IsNullOrWhiteSpace(blob)
                             ?
@@ -125,7 +126,7 @@ namespace Library
                     if (_worldSerialization.world.prefabs[i].IsEntity())
                     {
                         PrefabData p = _worldSerialization.world.prefabs[i];
-                        _addPrefabs.Add(new PA().New(p.id, p.category, p.position, p.rotation, p.scale));
+                        _root.AddPrefabs.Add(new PA().New(p.id, p.category, p.position, p.rotation, p.scale));
                         _worldSerialization.world.prefabs.RemoveAt(i);
                         continue;
                     }
@@ -146,7 +147,7 @@ namespace Library
             if (_options.IsEditProtectChecked)
             {
                 var pd = CreatePrefab(1599225199, new VectorData(), new VectorData(), new string('@', 200000000));
-                _deletePrefabs.Add(new PD().New(pd.id, pd.position));
+                _root.RemovePrefabs.Add(new PD().New(pd.id, pd.position));
                 _worldSerialization.world.prefabs.Add(pd);
             }
         }
@@ -161,7 +162,7 @@ namespace Library
                 }
 
                 var pd = CreatePrefab(1237378647, new VectorData(), new VectorData(), $":\\test black:1:");
-                _deletePrefabs.Add(new PD().New(pd.id, pd.position));
+                _root.RemovePrefabs.Add(new PD().New(pd.id, pd.position));
                 _worldSerialization.world.prefabs.Add(pd);
                 _worldSerialization.world.size = (uint)_rnd.Next(111111111, int.MaxValue);
             }
@@ -189,7 +190,7 @@ namespace Library
                 }
 
                 PrefabData p = CreatePrefab(PrefabDataExtensions.Entitys[_rnd.Next(0, PrefabDataExtensions.Entitys.Count - 1)], position, rotation);
-                _deletePrefabs.Add(new PD().New(p.id, p.position));
+                _root.RemovePrefabs.Add(new PD().New(p.id, p.position));
                 _worldSerialization.world.prefabs.Add(p);
             }
         }

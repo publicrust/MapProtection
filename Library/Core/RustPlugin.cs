@@ -11,73 +11,47 @@ namespace Library.Core
         public const string Plugin = @"
 // Reference: 0Harmony
 using CompanionServer.Handlers;
-using ConVar;
-using Facepunch.Models.Database;
 using Facepunch.Utility;
 using Harmony;
-using Harmony.ILCopying;
 using Newtonsoft.Json;
-using Oxide.Game.Rust.Libraries;
 using ProtoBuf;
 using System;
 using System.Collections.Generic;
-using System.Drawing;
 using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
 using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info(""MapProtection"", ""bmgjet & FREE RUST"", ""1.0.1"")]
+    [Info(""MapProtection"", ""bmgjet & FREE RUST"", ""1.1.2"")]
     [Description(""MapProtection"")]
     class MapProtection : RustPlugin
     {
         public static MapProtection plugin;
         private HarmonyInstance _harmony; //Reference to harmony
-        string Key = @""%PREFABKEY%"";
-        string ADD = @""%ADDKEY%"";
-        string RED = @""%REKEY%"";
-        string PathData = @""%PathData%"";
+        const string Key = @""%ROOT%"";
         uint MapSize;
-        List<PD> RemovePrefabs = new List<PD>();
-        List<PA> AddPrefabs = new List<PA>();
-        List<RE> AddRE = new List<RE>();
-        List<PathDataModel> AddPathData = new List<PathDataModel>();
-        public class RE { public string H; public byte[] D; public int C; }
-        public class PD { public uint ID; public Vector3 P; }
-        public class PA { public uint ID; public string C; public string P; public string R; public string S; }
 
-        internal class PathDataModel
-        {
-            public string Name { get; set; }
-            public int Hierarchy { get; set; }
-        }
+        private Lazy<RootModel> _root;
 
         private void Init()
         {
             plugin = this;
             MapSize = uint.Parse(""%SIZE%"");
-            if (Key.Length > 10)
-                RemovePrefabs = JsonConvert.DeserializeObject<List<PD>>(Encoding.UTF8.GetString(Compression.Uncompress(Convert.FromBase64String(Key))));
-            if (PathData.Length > 10)
-                AddPathData = JsonConvert.DeserializeObject<List<PathDataModel>>(Encoding.UTF8.GetString(Compression.Uncompress(Convert.FromBase64String(PathData))));
-            if (ADD.Length > 10)
-                AddPrefabs = JsonConvert.DeserializeObject<List<PA>>(Encoding.UTF8.GetString(Compression.Uncompress(Convert.FromBase64String(ADD))));
-            if (RED.Length > 10)
-                AddRE = JsonConvert.DeserializeObject<List<RE>>(Encoding.UTF8.GetString(Compression.Uncompress(Convert.FromBase64String(RED))));
-            _harmony = HarmonyInstance.Create(Name + ""PATCH"");
-            Type[] patchType = { AccessTools.Inner(typeof(MapProtection), ""OnWorldLoad_hook""), };
-            foreach (var t in patchType) { new PatchProcessor(_harmony, t, HarmonyMethod.Merge(t.GetHarmonyMethods())).Patch(); }
 
-            Key = """";
-            ADD = """";
-            RED = """";
-            PathData = """";
+            if (Key.Length > 10)
+                _root = new Lazy<RootModel>(() => JsonConvert.DeserializeObject<RootModel>(Encoding.UTF8.GetString(Compression.Uncompress(Convert.FromBase64String(Key)))));
+
+            _harmony = HarmonyInstance.Create(Name + ""PATCH"");
+
+            Type[] patchType = { AccessTools.Inner(typeof(MapProtection), ""OnWorldLoad_hook""), };
+
+            foreach (var t in patchType) { new PatchProcessor(_harmony, t, HarmonyMethod.Merge(t.GetHarmonyMethods())).Patch(); }
         }
+
         private void OnTerrainCreate() { World.Size = MapSize; ConVar.Server.worldsize = (int)MapSize; }
         private void OnServerInitialized() { timer.Once(10, () => { covalence.Server.Command(""o.unload"", this.Name); }); }
         private void Unload() { _harmony.UnpatchAll(Name + ""PATCH""); plugin = null; }
@@ -87,6 +61,24 @@ namespace Oxide.Plugins
             string[] s = vectorData.Split(new[] { "" "" }, StringSplitOptions.None);
             return new VectorData(float.Parse(s[0], CultureInfo.InvariantCulture), float.Parse(s[1], CultureInfo.InvariantCulture), float.Parse(s[2], CultureInfo.InvariantCulture));
         }
+        public Vector3 StringToVector3(string vectorData)
+        {
+            string[] s = vectorData.Split(new[] { "" "" }, StringSplitOptions.None);
+            // Убедитесь, что s содержит достаточно элементов перед преобразованием
+            if (s.Length >= 3)
+            {
+                float x = float.Parse(s[0], CultureInfo.InvariantCulture);
+                float y = float.Parse(s[1], CultureInfo.InvariantCulture);
+                float z = float.Parse(s[2], CultureInfo.InvariantCulture);
+                return new Vector3(x, y, z);
+            }
+            else
+            {
+                Debug.LogWarning(""StringToVector3: Неверный формат входных данных.Возвращен Vector3.zero."");
+                return Vector3.zero;
+            }
+        }
+
         [HarmonyPatch(typeof(WorldSerialization), nameof(WorldSerialization.Load), typeof(string))]
         internal class OnWorldLoad_hook
         {
@@ -108,42 +100,47 @@ namespace Oxide.Plugins
 
                 int D = 0;
                 int A = 0;
-                for (int i = __instance.world.prefabs.Count - 1; i >= 0; i--)
+
+
+                if (plugin._root.Value.RemovePrefabs != null && plugin._root.Value.RemovePrefabs.Count > 0)
                 {
-                    for (int p = plugin.RemovePrefabs.Count - 1; p >= 0; p--)
+                    for (int i = __instance.world.prefabs.Count - 1; i >= 0; i--)
                     {
-                        try
+                        for (int p = plugin._root.Value.RemovePrefabs.Count - 1; p >= 0; p--)
                         {
-                            if (plugin.RemovePrefabs[p].ID == __instance.world.prefabs[i].id && plugin.RemovePrefabs[p].P == __instance.world.prefabs[i].position)
+                            try
                             {
-                                __instance.world.prefabs.RemoveAt(i);
-                                plugin.RemovePrefabs.RemoveAt(p);
-                                D++;
-                                break;
+                                if (plugin._root.Value.RemovePrefabs[p].ID == __instance.world.prefabs[i].id && plugin._root.Value.RemovePrefabs[p].P == __instance.world.prefabs[i].position)
+                                {
+                                    __instance.world.prefabs.RemoveAt(i);
+                                    plugin._root.Value.RemovePrefabs.RemoveAt(p);
+                                    D++;
+                                    break;
+                                }
                             }
+                            catch { }
                         }
-                        catch { }
                     }
                 }
 
-                if (plugin.AddPathData.Count > 0)
+                if (plugin._root.Value.AddPathData != null && plugin._root.Value.AddPathData.Count > 0)
                 {
-                    foreach (var p in plugin.AddPathData)
+                    foreach (var p in plugin._root.Value.AddPathData)
                     {
                         var pathData = __instance.world.paths.FirstOrDefault(s => s.name == p.Name);
                         if (pathData == null)
                         {
                             plugin.Puts(""path not found "" + p.Name);
-                            return;
+                            continue;
                         }
 
                         pathData.hierarchy = p.Hierarchy;
                     }
                 }
 
-                if (plugin.AddPrefabs.Count > 0)
+                if (plugin._root.Value.AddPrefabs != null && plugin._root.Value.AddPrefabs.Count > 0)
                 {
-                    foreach (var p in plugin.AddPrefabs)
+                    foreach (var p in plugin._root.Value.AddPrefabs)
                     {
                         PrefabData pd = new PrefabData();
                         pd.id = p.ID;
@@ -155,16 +152,36 @@ namespace Oxide.Plugins
                         A++;
                     }
                 }
-                if (plugin.AddRE.Count > 0)
+
+                if (plugin._root.Value.AllPrefabs != null && plugin._root.Value.AllPrefabs.Count > 0)
+                {
+                    foreach (var p in plugin._root.Value.AllPrefabs)
+                    {
+                        var prefab = __instance.world.prefabs.FirstOrDefault(s => s.id == p.ID && s.position == plugin.StringToVector3(p.P) && s.rotation == plugin.StringToVector3(p.R) && s.scale == plugin.StringToVector3(p.S));
+
+                        if (prefab == null)
+                        {
+                            plugin.Puts($""Префаб {p.ID} не был обнаружен на карте"");
+                        }
+                        else
+                        {
+                            prefab.category = p.C;
+                        }
+                    }
+                }
+
+                if (plugin._root.Value.AddRE.Count > 0)
                 {
                     plugin.Puts(""Loading RustEditData"");
                     int PC = __instance.world.prefabs.Count;
-                    foreach (var p in plugin.AddRE)
+                    foreach (var p in plugin._root.Value.AddRE)
                     {
                         if (p.C != PC) { plugin.Puts(""Invalid Prefab Count "" + p.C + "" / "" + PC); break; }
                         __instance.AddMap(p.H, p.D);
                     }
                 }
+
+                plugin._root = null;
                 UnityEngine.Debug.LogWarning(""[Map Protecion] Removed "" + D + "" Spam Prefabs / Restored "" + A + "" Missing Prefabs"");
             }
 
@@ -224,9 +241,27 @@ namespace Oxide.Plugins
                 return stringBuilder2.ToString();
             }
         }
+
+        class RootModel
+        {
+            public List<PD> RemovePrefabs { get; set; }
+            public List<PA> AddPrefabs { get; set; }
+            public List<RE> AddRE { get; set; }
+            public List<PA> AllPrefabs { get; set; }
+            public List<PathDataModel> AddPathData { get; set; }
+        }
+
+        public class RE { public string H; public byte[] D; public int C; }
+        public class PD { public uint ID; public Vector3 P; }
+        public class PA { public uint ID; public string C; public string P; public string R; public string S; }
+
+        internal class PathDataModel
+        {
+            public string Name { get; set; }
+            public int Hierarchy { get; set; }
+        }
     }
 }
-
 ";
     }
 }
