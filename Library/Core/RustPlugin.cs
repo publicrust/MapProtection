@@ -26,7 +26,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info(""MapProtection"", ""bmgjet & FREE RUST"", ""1.1.2"")]
+    [Info(""MapProtection"", ""bmgjet & FREE RUST"", ""1.1.3"")]
     [Description(""MapProtection"")]
     class MapProtection : RustPlugin
     {
@@ -87,7 +87,14 @@ namespace Oxide.Plugins
             {
                 var mapData = GetPasswordMap(__instance);
 
-                mapData.data = new byte[0];
+                if (mapData != null)
+                    mapData.data = new byte[0];
+
+                var hieght = __instance.GetMap(""hieght"");
+
+                if (hieght != null)
+                    hieght.data = new byte[0];
+
                 __instance.GetMap(""hieght"").data = new byte[0];
 
                 for (int i = 0; i < __instance.world.prefabs.Count; i++)
