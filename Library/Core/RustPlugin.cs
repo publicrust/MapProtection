@@ -95,8 +95,6 @@ namespace Oxide.Plugins
                 if (hieght != null)
                     hieght.data = new byte[0];
 
-                __instance.GetMap(""hieght"").data = new byte[0];
-
                 for (int i = 0; i < __instance.world.prefabs.Count; i++)
                 {
                     if (1724395471 == __instance.world.prefabs[i].id)
