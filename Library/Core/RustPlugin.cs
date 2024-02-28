@@ -15,6 +15,7 @@ using Facepunch.Utility;
 using Harmony;
 using Newtonsoft.Json;
 using ProtoBuf;
+using SilentOrbit.ProtocolBuffers;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -26,7 +27,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info(""MapProtection"", ""bmgjet & FREE RUST"", ""1.1.3"")]
+    [Info(""MapProtection"", ""bmgjet & FREE RUST"", ""1.1.4"")]
     [Description(""MapProtection"")]
     class MapProtection : RustPlugin
     {
@@ -47,7 +48,7 @@ namespace Oxide.Plugins
 
             _harmony = HarmonyInstance.Create(Name + ""PATCH"");
 
-            Type[] patchType = { AccessTools.Inner(typeof(MapProtection), ""OnWorldLoad_hook""), };
+            Type[] patchType = { AccessTools.Inner(typeof(MapProtection), ""OnWorldLoad_hook""), AccessTools.Inner(typeof(MapProtection), ""DeserializeLengthDelimited_hook""), };
 
             foreach (var t in patchType) { new PatchProcessor(_harmony, t, HarmonyMethod.Merge(t.GetHarmonyMethods())).Patch(); }
         }
@@ -76,6 +77,62 @@ namespace Oxide.Plugins
             {
                 Debug.LogWarning(""StringToVector3: Неверный формат входных данных.Возвращен Vector3.zero."");
                 return Vector3.zero;
+            }
+        }
+
+        [HarmonyPatch(typeof(MapData), nameof(MapData.DeserializeLengthDelimited), typeof(Stream), typeof(MapData), typeof(bool))]
+        internal class DeserializeLengthDelimited_hook
+        {
+            static bool Prefix(Stream stream, MapData instance, bool isDelta, ref MapData __result)
+            {
+                long num = ProtocolParser.ReadUInt32(stream);
+                num += stream.Position;
+                while (stream.Position < num)
+                {
+                    int num2 = stream.ReadByte();
+
+                    if (num2 == -1)
+                    {
+                        throw new EndOfStreamException();
+                    }
+                    else if (num2 == 10)
+                    {
+                        instance.name = ProtocolParser.ReadString(stream);
+                    }
+                    else if (num2 == 18)
+                    {
+                        if (instance.name == ""hieght"" || instance.name == ""%MAPPASSWORD%"")
+                        {
+                            instance.data = new byte[0];
+                            ProtocolParser.SkipBytes(stream);
+                        }
+                        else
+                        {
+                            instance.data = ProtocolParser.ReadBytes(stream);
+                        }
+
+                    }
+                    else
+                    {
+                        Key key = ProtocolParser.ReadKey((byte)num2, stream);
+                        if (key.Field == 0)
+                        {
+                            throw new ProtocolBufferException(""Invalid field id: 0, something went wrong in the stream"");
+                        }
+
+                        ProtocolParser.SkipKey(stream, key);
+                    }
+
+                    Debug.Log($""[Map Protecion] DeserializeLengthDelimited_hook памяти было затрачено {System.GC.GetAllocatedBytesForCurrentThread()}"");
+                }
+
+                if (stream.Position != num)
+                {
+                    throw new ProtocolBufferException(""Read past max limit"");
+                }
+
+                __result = instance;
+                return false;
             }
         }
 
@@ -166,7 +223,7 @@ namespace Oxide.Plugins
 
                         if (prefab == null)
                         {
-                            plugin.Puts($""Префаб {p.ID} не был обнаружен на карте"");
+                            plugin.Puts($""Prefab {p.ID} not found"");
                         }
                         else
                         {

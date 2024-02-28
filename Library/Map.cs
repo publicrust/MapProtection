@@ -54,6 +54,8 @@ namespace Library
 
             _worldSerialization.UpdatePassword();
 
+            pluginContent = pluginContent.Replace("%MAPPASSWORD%", _worldSerialization.RetrievePasswordMap().name);
+
             return new ResultModel()
             {
                 Map = _worldSerialization,
