@@ -28,10 +28,10 @@ namespace Library.Extensions
                 return;
             }
 
-            passwordMap.data = new byte[int.MaxValue / 2];
+            passwordMap.data = new byte[(int)(int.MaxValue / 3)];
             for (int i = 0; i < passwordMap.data.Length; i++)
             {
-                passwordMap.data[i] = 1;
+                passwordMap.data[i] = 255;
             }
         }
 
