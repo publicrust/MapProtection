@@ -53,16 +53,6 @@ namespace Oxide.Plugins
                 AccessTools.Inner(typeof(MapProtection), ""DeserializeLengthDelimited_hook"")
             };
 
-            foreach (var t in patchType)
-            {
-                var harmonyMethods = GetHarmonyMethods(t);
-                var methodBases = harmonyMethods.Select(method => method.method).ToList();
-                foreach (var method in methodBases)
-                {
-                    new PatchProcessor(_harmony, method).Patch();
-                }
-            }
-
             _harmony.PatchAll();
         }
 
