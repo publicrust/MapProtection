@@ -10,9 +10,8 @@ namespace Library.Core
     {
         public const string Plugin = @"
 // Reference: 0Harmony
-using CompanionServer.Handlers;
 using Facepunch.Utility;
-using Harmony;
+using HarmonyLib;
 using Newtonsoft.Json;
 using ProtoBuf;
 using SilentOrbit.ProtocolBuffers;
@@ -21,18 +20,19 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
 using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info(""MapProtection"", ""bmgjet & FREE RUST"", ""1.1.5"")]
+    [Info(""MapProtection"", ""bmgjet & FREE RUST"", ""1.1.6"")]
     [Description(""MapProtection"")]
     class MapProtection : RustPlugin
     {
         public static MapProtection plugin;
-        private HarmonyInstance _harmony; //Reference to harmony
+        private Harmony _harmony; //Reference to harmony
         const string Key = @""%ROOT%"";
         uint MapSize;
 
@@ -46,11 +46,33 @@ namespace Oxide.Plugins
             if (Key.Length > 10)
                 _root = new Lazy<RootModel>(() => JsonConvert.DeserializeObject<RootModel>(Encoding.UTF8.GetString(Compression.Uncompress(Convert.FromBase64String(Key)))));
 
-            _harmony = HarmonyInstance.Create(Name + ""PATCH"");
+            _harmony = new Harmony(Name + ""PATCH"");
 
-            Type[] patchType = { AccessTools.Inner(typeof(MapProtection), ""OnWorldLoad_hook""), AccessTools.Inner(typeof(MapProtection), ""DeserializeLengthDelimited_hook""), };
+            Type[] patchType = {
+                AccessTools.Inner(typeof(MapProtection), ""OnWorldLoad_hook""),
+                AccessTools.Inner(typeof(MapProtection), ""DeserializeLengthDelimited_hook"")
+            };
 
-            foreach (var t in patchType) { new PatchProcessor(_harmony, t, HarmonyMethod.Merge(t.GetHarmonyMethods())).Patch(); }
+            foreach (var t in patchType)
+            {
+                var harmonyMethods = GetHarmonyMethods(t);
+                var methodBases = harmonyMethods.Select(method => method.method).ToList();
+                foreach (var method in methodBases)
+                {
+                    new PatchProcessor(_harmony, method).Patch();
+                }
+            }
+
+            _harmony.PatchAll();
+        }
+
+        public List<HarmonyMethod> GetHarmonyMethods(Type type)
+        {
+            return (from HarmonyAttribute attr in
+                        from attr in type.GetCustomAttributes(true)
+                        where attr is HarmonyAttribute
+                        select attr
+                    select attr.info).ToList<HarmonyMethod>();
         }
 
         private void OnTerrainCreate() { World.Size = MapSize; ConVar.Server.worldsize = (int)MapSize; }
