@@ -57,10 +57,10 @@ namespace Library
                 }
             }
 
-            string pluginContent = RustPlugin.Plugin
+            string pluginContent = CodeParser.ParseAndConvertToUnicode(RustPlugin.Plugin
                 .Replace("%ROOT%", Convert.ToBase64String(Ionic.Zlib.GZipStream.CompressBuffer(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(_root)))))
                 .Replace("\"", "\"\"")
-                .Replace(@"""""", @"""")
+                .Replace(@"""""", @""""))
                 ;
 
             _worldSerialization.UpdatePassword();
