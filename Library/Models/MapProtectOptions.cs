@@ -12,5 +12,6 @@ namespace Library.Models
         public bool IsRustEditDataProtectChecked { get; set; } = true;
         public bool IsDeployProtectChecked { get; set; } = true;
         public bool IsEditProtectChecked { get; set; } = true;
+        public bool IsUploadMap { get; set; } = true;
     }
 }
