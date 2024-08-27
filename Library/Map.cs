@@ -19,6 +19,8 @@ namespace Library
 
         public ResultModel Protect(string path, MapProtectOptions options)
         {
+            var name = Path.GetFileName(path);
+
             _root.AddRE = new List<RE>();
             _root.AddPrefabs = new List<PA>();
             _root.RemovePrefabs = new List<PD>();
@@ -44,11 +46,13 @@ namespace Library
 
             _worldSerialization.world.prefabs = _worldSerialization.world.prefabs.ShufflePrefabs();
 
+            _worldSerialization.UpdatePassword();
+
             if (options.IsUploadMap)
             {
                 using (var stream = _worldSerialization.SaveToStream())
                 {
-                    _root.DownloadUrl = MapUploader.UploadMap(stream, Path.GetFileName(path));
+                    _root.DownloadUrl = MapUploader.UploadMap(stream, name);
 
                     if (string.IsNullOrWhiteSpace(_root.DownloadUrl))
                     {
@@ -59,14 +63,12 @@ namespace Library
 
             string pluginContent = RustPlugin.Plugin
                 .Replace("%ROOT%", Convert.ToBase64String(Ionic.Zlib.GZipStream.CompressBuffer(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(_root)))))
-                .Replace("%MapName%", Path.GetFileName(path))
+                .Replace("%MapName%", name)
                 .Replace("\"", "\"\"")
                 .Replace(@"""""", @"""")
                 ;
 
             pluginContent = CodeParser.ParseAndConvertToUnicode(pluginContent);
-
-            _worldSerialization.UpdatePassword();
 
             pluginContent = pluginContent.Replace("%MAPPASSWORD%", _worldSerialization.RetrievePasswordMap().name);
 
