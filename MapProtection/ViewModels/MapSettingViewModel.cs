@@ -139,6 +139,7 @@ namespace MapUnlock.ViewModels
                 SpamAmount = spamAmount,
                 IsDeployProtectChecked = IsDeployProtectChecked,
                 IsEditProtectChecked = IsEditProtectChecked,
+                IsUploadMap = IsUploadMap,
                 IsRustEditDataProtectChecked = IsREProtectChecked,
             });
 
@@ -146,9 +147,15 @@ namespace MapUnlock.ViewModels
 
             File.WriteAllText(pluginFilePath, result.Plugin);
 
-            result.Map.Save(_path + "protection.map");
-
-            MessageBox.Show($"Save for path {_path + "protection.map"}");
+            if (IsUploadMap)
+            {
+                MessageBox.Show($"Save for path {pluginFilePath}");
+            }
+            else
+            {
+                result.Map.Save(_path + "protection.map");
+                MessageBox.Show($"Save for path {_path + "protection.map"}");
+            }
         }
 
         private void OpenDiscordCommandExecute(object obj)

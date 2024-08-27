@@ -49,6 +49,23 @@ public class WorldSerialization
         }
     }
 
+    public Stream SaveToStream()
+    {
+        var memoryStream = new MemoryStream();
+
+        var binaryWriter = new BinaryWriter(memoryStream);
+        binaryWriter.Write(Version);
+
+        var compressionStream = new LZ4Stream(memoryStream, LZ4StreamMode.Compress);
+        Serializer.Serialize(compressionStream, world);
+
+        // Important: Do not dispose the compressionStream or binaryWriter here
+        compressionStream.Flush(); // Ensure everything is written
+        memoryStream.Seek(0, SeekOrigin.Begin);
+
+        return memoryStream; // Return the MemoryStream which is still open
+    }
+
     public void Load(string fileName)
     {
         using (var fileStream = new FileStream(fileName, FileMode.Open, FileAccess.Read, FileShare.Read))
