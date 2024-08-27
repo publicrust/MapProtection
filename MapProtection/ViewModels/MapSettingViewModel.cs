@@ -25,7 +25,7 @@ namespace MapUnlock.ViewModels
         private bool _isREProtectChecked = true;
         private bool _isDeployProtectChecked = true;
         private bool _isEditProtectChecked = true;
-        private bool _isUploadMap = false;
+        private bool _isUploadMap = true;
 
         public bool IsUploadMap
         {
