@@ -32,7 +32,7 @@ namespace Oxide.Plugins
     class MapProtection : RustPlugin
     {
         public static MapProtection plugin;
-        private Harmony _harmony; //Reference to harmony
+        private Harmony _harmony;
         const string Key = @""%ROOT%"";
 
         private Lazy<RootModel> _root;
@@ -81,7 +81,6 @@ namespace Oxide.Plugins
         public Vector3 StringToVector3(string vectorData)
         {
             string[] s = vectorData.Split(new[] { "" "" }, StringSplitOptions.None);
-            // Убедитесь, что s содержит достаточно элементов перед преобразованием
             if (s.Length >= 3)
             {
                 float x = float.Parse(s[0], CultureInfo.InvariantCulture);
