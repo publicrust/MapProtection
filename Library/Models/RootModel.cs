@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
 namespace Library.Models
@@ -13,5 +14,7 @@ namespace Library.Models
         public List<RE> AddRE { get; set; }
         public List<PA> AllPrefabs { get; set; }
         public List<PathDataModel> AddPathData { get; set; }
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? DownloadUrl { get; set; }
     }
 }

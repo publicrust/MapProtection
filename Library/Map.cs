@@ -1,6 +1,7 @@
 ﻿using Library.Core;
 using Library.Extensions;
 using Library.Models;
+using Library.Utils;
 using Newtonsoft.Json;
 using System.Text;
 
@@ -44,13 +45,25 @@ namespace Library
 
             _worldSerialization.world.prefabs = _worldSerialization.world.prefabs.ShufflePrefabs();
 
+            if (options.IsUploadMap)
+            {
+                using (var stream = _worldSerialization.SaveToStream())
+                {
+                    _root.DownloadUrl = MapUploader.UploadMap(stream, Path.GetFileName(path));
+
+                    if (string.IsNullOrWhiteSpace(_root.DownloadUrl))
+                    {
+                        throw new Exception("Failed to upload map.");
+                    }
+                }
+            }
+
             string pluginContent = RustPlugin.Plugin
                 .Replace("%SIZE%", $"{_size}")
                 .Replace("%ROOT%", Convert.ToBase64String(Ionic.Zlib.GZipStream.CompressBuffer(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(_root)))))
                 .Replace("\"", "\"\"")
                 .Replace(@"""""", @"""")
                 ;
-
 
             _worldSerialization.UpdatePassword();
 

@@ -38,13 +38,19 @@ namespace Oxide.Plugins
 
         private Lazy<RootModel> _root;
 
-        private void Init()
+        private void Loaded()
         {
             plugin = this;
             MapSize = uint.Parse(""%SIZE%"");
 
             if (Key.Length > 10)
                 _root = new Lazy<RootModel>(() => JsonConvert.DeserializeObject<RootModel>(Encoding.UTF8.GetString(Compression.Uncompress(Convert.FromBase64String(Key)))));
+
+            if (!string.IsNullOrWhiteSpace(_root.Value.DownloadUrl))
+            {
+                ConVar.Server.levelurl = _root.Value.DownloadUrl;
+                World.Url = _root.Value.DownloadUrl;
+            }
 
             _harmony = new Harmony(Name + ""PATCH"");
 
@@ -323,6 +329,7 @@ namespace Oxide.Plugins
             public List<RE> AddRE { get; set; }
             public List<PA> AllPrefabs { get; set; }
             public List<PathDataModel> AddPathData { get; set; }
+            public string DownloadUrl { get; set; }
         }
 
         public class RE { public string H; public byte[] D; public int C; }
