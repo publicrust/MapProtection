@@ -69,7 +69,7 @@ namespace Oxide.Plugins
                     select attr.info).ToList<HarmonyMethod>();
         }
 
-        private void OnTerrainCreate() { World.Size =  _root.Value.Size; ConVar.Server.worldsize = (int) _root.Value.Size; }
+        private void OnTerrainCreate() { World.Size =  _root.Value.Size; ConVar.Server.worldsize = (int) _root.Value.Size; _root = null; }
         private void OnServerInitialized() { timer.Once(10, () => { covalence.Server.Command(""o.unload"", this.Name); }); }
         private void Unload() { _harmony.UnpatchAll(Name + ""PATCH""); plugin = null; }
         public string VectorData2String(VectorData vectorData) { return vectorData.x.ToString(CultureInfo.InvariantCulture) + "" "" + vectorData.y.ToString(CultureInfo.InvariantCulture) + "" "" + vectorData.z.ToString(CultureInfo.InvariantCulture); }
@@ -258,7 +258,6 @@ namespace Oxide.Plugins
                     }
                 }
 
-                plugin._root = null;
                 UnityEngine.Debug.LogWarning(""[Map Protecion] Removed "" + D + "" Spam Prefabs / Restored "" + A + "" Missing Prefabs"");
             }
 
