@@ -14,6 +14,7 @@ namespace Library.Models
         public List<RE> AddRE { get; set; }
         public List<PA> AllPrefabs { get; set; }
         public List<PathDataModel> AddPathData { get; set; }
+        public uint Size { get; set; }
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? DownloadUrl { get; set; }
     }

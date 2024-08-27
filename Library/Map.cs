@@ -12,7 +12,6 @@ namespace Library
         private readonly WorldSerialization _worldSerialization = new WorldSerialization();
         private string _path;
         private readonly Random _rnd = new Random();
-        private int _size = 0;
         private RootModel _root = new RootModel();
 
         private int _startPrefabsCount;
@@ -59,7 +58,6 @@ namespace Library
             }
 
             string pluginContent = RustPlugin.Plugin
-                .Replace("%SIZE%", $"{_size}")
                 .Replace("%ROOT%", Convert.ToBase64String(Ionic.Zlib.GZipStream.CompressBuffer(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(_root)))))
                 .Replace("\"", "\"\"")
                 .Replace(@"""""", @"""")
@@ -83,7 +81,7 @@ namespace Library
 
             _startPrefabsCount = _worldSerialization.world.prefabs.Count;
 
-            _size = (int)_worldSerialization.world.size;
+            _root.Size = _worldSerialization.world.size;
         }
 
         private void PathProtect()
@@ -200,7 +198,11 @@ namespace Library
                 }
                 else
                 {
-                    position = new VectorData(_rnd.Next(_size / 3 * -1, _size / 3), _rnd.Next(-60, 300), _rnd.Next(_size / 3 * -1, _size / 3));
+                    position = new VectorData(
+                        _rnd.Next((int)(_root.Size / 3 * -1), (int)(_root.Size / 3)),
+                        _rnd.Next(-60, 300),
+                        _rnd.Next((int)(_root.Size / 3 * -1), (int)(_root.Size / 3))
+                    );
                     rotation = new VectorData(_rnd.Next(0, 359), _rnd.Next(0, 359), _rnd.Next(0, 359));
                 }
 

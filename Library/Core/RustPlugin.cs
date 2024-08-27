@@ -10,6 +10,7 @@ namespace Library.Core
     {
         public const string Plugin = @"
 // Reference: 0Harmony
+using CompanionServer.Handlers;
 using Facepunch.Utility;
 using HarmonyLib;
 using Newtonsoft.Json;
@@ -20,7 +21,6 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
 using UnityEngine;
@@ -34,14 +34,12 @@ namespace Oxide.Plugins
         public static MapProtection plugin;
         private Harmony _harmony; //Reference to harmony
         const string Key = @""%ROOT%"";
-        uint MapSize;
 
         private Lazy<RootModel> _root;
 
         private void Loaded()
         {
             plugin = this;
-            MapSize = uint.Parse(""%SIZE%"");
 
             if (Key.Length > 10)
                 _root = new Lazy<RootModel>(() => JsonConvert.DeserializeObject<RootModel>(Encoding.UTF8.GetString(Compression.Uncompress(Convert.FromBase64String(Key)))));
@@ -71,7 +69,7 @@ namespace Oxide.Plugins
                     select attr.info).ToList<HarmonyMethod>();
         }
 
-        private void OnTerrainCreate() { World.Size = MapSize; ConVar.Server.worldsize = (int)MapSize; }
+        private void OnTerrainCreate() { World.Size =  _root.Value.Size; ConVar.Server.worldsize = (int) _root.Value.Size; }
         private void OnServerInitialized() { timer.Once(10, () => { covalence.Server.Command(""o.unload"", this.Name); }); }
         private void Unload() { _harmony.UnpatchAll(Name + ""PATCH""); plugin = null; }
         public string VectorData2String(VectorData vectorData) { return vectorData.x.ToString(CultureInfo.InvariantCulture) + "" "" + vectorData.y.ToString(CultureInfo.InvariantCulture) + "" "" + vectorData.z.ToString(CultureInfo.InvariantCulture); }
@@ -119,7 +117,7 @@ namespace Oxide.Plugins
                     }
                     else if (num2 == 18)
                     {
-                        if (instance.name == ""hieght"" || instance.name == ""%MAPPASSWORD%"")
+                        if (instance.name == ""hieght"" || instance.name == "" % MAPPASSWORD % "")
                         {
                             instance.data = new byte[0];
                             ProtocolParser.SkipBytes(stream);
@@ -141,7 +139,7 @@ namespace Oxide.Plugins
                         ProtocolParser.SkipKey(stream, key);
                     }
 
-                    Debug.Log($""[Map Protecion] DeserializeLengthDelimited_hook памяти было затрачено {System.GC.GetAllocatedBytesForCurrentThread()}"");
+                    Debug.Log($""[Map Protecion] DeserializeLengthDelimited_hook памяти было затрачено { System.GC.GetAllocatedBytesForCurrentThread()}"");
                 }
 
                 if (stream.Position != num)
@@ -329,6 +327,7 @@ namespace Oxide.Plugins
             public List<RE> AddRE { get; set; }
             public List<PA> AllPrefabs { get; set; }
             public List<PathDataModel> AddPathData { get; set; }
+            public uint Size { get; set; }
             public string DownloadUrl { get; set; }
         }
 
