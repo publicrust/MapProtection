@@ -19,7 +19,6 @@ namespace Backend.Controllers
             _logger = ILogger;
         }
 
-        // POST: /MapProtection/protect
         [HttpPost("protect")]
         [Consumes("multipart/form-data")]
         public async Task<IActionResult> ProtectMap([FromForm] IFormFile mapFile, [FromForm] MapProtectOptions options)
@@ -48,10 +47,8 @@ namespace Backend.Controllers
                     var map = new Map();
                     var result = map.Protect(name + ".map", mapStream, options);
 
-                    // Преобразуем текст плагина в байты
                     var pluginBytes = Encoding.UTF8.GetBytes(result.Plugin);
 
-                    // Возвращаем плагин в виде файла с нужным MIME типом и именем файла
                     return File(pluginBytes, "application/octet-stream", $"MapProtection.cs");
                 }
             }
