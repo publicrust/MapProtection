@@ -70,15 +70,20 @@ public class WorldSerialization
     {
         using (var fileStream = new FileStream(fileName, FileMode.Open, FileAccess.Read, FileShare.Read))
         {
-            using (var binaryReader = new BinaryReader(fileStream))
-            {
-                Version = binaryReader.ReadUInt32();
-                // if (Version != CurrentVersion)
-                //   MessageBox.Show("Map Version is: " + Version + " whilst Rust is on: " + CurrentVersion);
+            Load(fileStream);
+        }
+    }
 
-                using (var compressionStream = new LZ4Stream(fileStream, LZ4StreamMode.Decompress))
-                    world = Serializer.Deserialize<WorldData>(compressionStream);
-            }
+    public void Load(Stream stream)
+    {
+        using (var binaryReader = new BinaryReader(stream))
+        {
+            Version = binaryReader.ReadUInt32();
+            // if (Version != CurrentVersion)
+            //   MessageBox.Show("Map Version is: " + Version + " whilst Rust is on: " + CurrentVersion);
+
+            using (var compressionStream = new LZ4Stream(stream, LZ4StreamMode.Decompress))
+                world = Serializer.Deserialize<WorldData>(compressionStream);
         }
     }
 }

@@ -3,6 +3,7 @@ using Library.Extensions;
 using Library.Models;
 using Library.Utils;
 using Newtonsoft.Json;
+using System.IO;
 using System.Text;
 
 namespace Library
@@ -10,29 +11,29 @@ namespace Library
     public class Map
     {
         private readonly WorldSerialization _worldSerialization = new WorldSerialization();
-        private string _path;
         private readonly Random _rnd = new Random();
         private RootModel _root = new RootModel();
 
         private int _startPrefabsCount;
         private MapProtectOptions _options;
 
-        public ResultModel Protect(string path, MapProtectOptions options)
+        public ResultModel Protect(string name, Stream mapStream, MapProtectOptions options)
         {
-            var name = Path.GetFileName(path);
-
             _root.AddRE = new List<RE>();
             _root.AddPrefabs = new List<PA>();
             _root.RemovePrefabs = new List<PD>();
             _root.AllPrefabs = new List<PA>();
             _root.AddPathData = new List<PathDataModel>();
 
-            _path = path;
             _options = options;
 
-            LoadWorldData();
+            _worldSerialization.Load(mapStream);
 
-            foreach(var prefab in _worldSerialization.world.prefabs)
+            _startPrefabsCount = _worldSerialization.world.prefabs.Count;
+
+            _root.Size = _worldSerialization.world.size;
+
+            foreach (var prefab in _worldSerialization.world.prefabs)
             {
                 _root.AllPrefabs.Add(new PA().New(prefab.id, prefab.category, prefab.position, prefab.rotation, prefab.scale));
             }
@@ -77,16 +78,6 @@ namespace Library
                 Map = _worldSerialization,
                 Plugin = pluginContent,
             };
-
-        }
-
-        private void LoadWorldData()
-        {
-            _worldSerialization.Load(_path);
-
-            _startPrefabsCount = _worldSerialization.world.prefabs.Count;
-
-            _root.Size = _worldSerialization.world.size;
         }
 
         private void PathProtect()
@@ -104,7 +95,6 @@ namespace Library
 
                 pathData.hierarchy = 0;
             }
-
         }
 
         private void ProcessProtection()
@@ -188,7 +178,7 @@ namespace Library
 
         private void ProcessSpamPrefabs()
         {
-            if(_options.SpamAmount == null)
+            if (_options.SpamAmount == null)
                 return;
 
             for (int i = 0; i < _options.SpamAmount; i++)

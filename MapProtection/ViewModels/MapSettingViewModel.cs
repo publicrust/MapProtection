@@ -134,7 +134,10 @@ namespace MapUnlock.ViewModels
 
             Map _map = new Map();
 
-            var result = _map.Protect(_path, new Library.Models.MapProtectOptions()
+
+            using var fileStream = new FileStream(_path, FileMode.Open, FileAccess.Read, FileShare.Read);
+
+            var result = _map.Protect(Path.GetFileName(_path), fileStream, new Library.Models.MapProtectOptions()
             {
                 SpamAmount = spamAmount,
                 IsDeployProtectChecked = IsDeployProtectChecked,
