@@ -27,60 +27,85 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info(""MapProtection[%MapName%]"", ""bmgjet & FREE RUST"", ""1.1.8"")]
+    [Info(""MapProtection[% MapName %]"", ""bmgjet & FREE RUST"", ""1.1.8"")]
     [Description(""MapProtection"")]
-    class MapProtection : RustPlugin
+    internal sealed class MapProtection : RustPlugin
     {
-        public static MapProtection plugin;
-        private Harmony _harmony;
-        const string Key = @""%ROOT%"";
+        private static MapProtection? plugin;
+        private Harmony? _harmony;
+        private const string Key = ""%ROOT%"";
 
-        private Lazy<RootModel> _root;
+        private Lazy<RootModel>? _root;
+        internal static readonly string[] separator = new[] { "" "" };
+
+        private static void SetPlugin(MapProtection? instance)
+        {
+            plugin = instance;
+        }
+
+        private static void SetLevelUrl(string url)
+        {
+            ConVar.Server.levelurl = url;
+            World.Url = url;
+        }
+
+        private static void SetWorldSize(uint size)
+        {
+            World.Size = size;
+            ConVar.Server.worldsize = (int)size;
+        }
 
         private void Loaded()
         {
-            plugin = this;
+            SetPlugin(this);
 
             if (Key.Length > 10)
-                _root = new Lazy<RootModel>(() => JsonConvert.DeserializeObject<RootModel>(Encoding.UTF8.GetString(Compression.Uncompress(Convert.FromBase64String(Key)))));
-
-            if (!string.IsNullOrWhiteSpace(_root.Value.DownloadUrl))
             {
-                ConVar.Server.levelurl = _root.Value.DownloadUrl;
-                World.Url = _root.Value.DownloadUrl;
+                _root = new Lazy<RootModel>(() => JsonConvert.DeserializeObject<RootModel>(Encoding.UTF8.GetString(Compression.Uncompress(Convert.FromBase64String(Key)))));
+            }
+
+            if (_root?.Value?.DownloadUrl is { } downloadUrl && !string.IsNullOrWhiteSpace(downloadUrl))
+            {
+                SetLevelUrl(downloadUrl);
             }
 
             _harmony = new Harmony(Name + ""PATCH"");
-
-            Type[] patchType = {
-                AccessTools.Inner(typeof(MapProtection), ""OnWorldLoad_hook""),
-                AccessTools.Inner(typeof(MapProtection), ""DeserializeLengthDelimited_hook"")
-            };
-
             _harmony.PatchAll();
         }
 
-        public List<HarmonyMethod> GetHarmonyMethods(Type type)
+        private void OnTerrainCreate()
         {
-            return (from HarmonyAttribute attr in
-                        from attr in type.GetCustomAttributes(true)
-                        where attr is HarmonyAttribute
-                        select attr
-                    select attr.info).ToList<HarmonyMethod>();
+            if (_root?.Value != null)
+            {
+                SetWorldSize(_root.Value.Size);
+                _root = null;
+            }
         }
 
-        private void OnTerrainCreate() { World.Size =  _root.Value.Size; ConVar.Server.worldsize = (int) _root.Value.Size; _root = null; }
-        private void OnServerInitialized() { timer.Once(10, () => { covalence.Server.Command(""o.unload"", this.Name); }); }
-        private void Unload() { _harmony.UnpatchAll(Name + ""PATCH""); plugin = null; }
-        public string VectorData2String(VectorData vectorData) { return vectorData.x.ToString(CultureInfo.InvariantCulture) + "" "" + vectorData.y.ToString(CultureInfo.InvariantCulture) + "" "" + vectorData.z.ToString(CultureInfo.InvariantCulture); }
-        public VectorData String2Vector(string vectorData)
+        private void OnServerInitialized(bool initial)
         {
-            string[] s = vectorData.Split(new[] { "" "" }, StringSplitOptions.None);
+            _ = timer.Once(10, () => covalence.Server.Command(""o.unload"", Name));
+        }
+
+        private void Unload()
+        {
+            if (_harmony != null)
+            {
+                _harmony.UnpatchAll(Name + ""PATCH"");
+                _harmony = null;
+            }
+            SetPlugin(null);
+        }
+
+        private VectorData String2Vector(string vectorData)
+        {
+            string[] s = vectorData.Split(separator, StringSplitOptions.None);
             return new VectorData(float.Parse(s[0], CultureInfo.InvariantCulture), float.Parse(s[1], CultureInfo.InvariantCulture), float.Parse(s[2], CultureInfo.InvariantCulture));
         }
-        public Vector3 StringToVector3(string vectorData)
+
+        private Vector3 StringToVector3(string vectorData)
         {
-            string[] s = vectorData.Split(new[] { "" "" }, StringSplitOptions.None);
+            string[] s = vectorData.Split(separator, StringSplitOptions.None);
             if (s.Length >= 3)
             {
                 float x = float.Parse(s[0], CultureInfo.InvariantCulture);
@@ -88,17 +113,14 @@ namespace Oxide.Plugins
                 float z = float.Parse(s[2], CultureInfo.InvariantCulture);
                 return new Vector3(x, y, z);
             }
-            else
-            {
-                Debug.LogWarning(""StringToVector3: Неверный формат входных данных.Возвращен Vector3.zero."");
-                return Vector3.zero;
-            }
+            Debug.LogWarning(""StringToVector3: Invalid input format. Returning Vector3.zero."");
+            return Vector3.zero;
         }
 
-        [HarmonyPatch(typeof(MapData), nameof(MapData.DeserializeLengthDelimited), typeof(Stream), typeof(MapData), typeof(bool))]
-        internal class DeserializeLengthDelimited_hook
+        [HarmonyPatch(typeof(MapData), ""DeserializeLengthDelimited"")]
+        internal static class DeserializeLengthDelimitedHook
         {
-            static bool Prefix(Stream stream, MapData instance, bool isDelta, ref MapData __result)
+            private static bool Prefix(Stream stream, MapData instance, bool isDelta, ref MapData __result)
             {
                 long num = ProtocolParser.ReadUInt32(stream);
                 num += stream.Position;
@@ -116,16 +138,15 @@ namespace Oxide.Plugins
                     }
                     else if (num2 == 18)
                     {
-                        if (instance.name == ""hieght"" || instance.name == "" % MAPPASSWORD % "")
+                        if (instance.name is ""hieght"" or ""%MAPPASSWORD%"")
                         {
-                            instance.data = new byte[0];
+                            instance.data = Array.Empty<byte>();
                             ProtocolParser.SkipBytes(stream);
                         }
                         else
                         {
                             instance.data = ProtocolParser.ReadBytes(stream);
                         }
-
                     }
                     else
                     {
@@ -134,11 +155,10 @@ namespace Oxide.Plugins
                         {
                             throw new ProtocolBufferException(""Invalid field id: 0, something went wrong in the stream"");
                         }
-
                         ProtocolParser.SkipKey(stream, key);
                     }
 
-                    Debug.Log($""[Map Protecion] DeserializeLengthDelimited_hook памяти было затрачено { System.GC.GetAllocatedBytesForCurrentThread()}"");
+                    Debug.Log($""[Map Protection] DeserializeLengthDelimited_hook memory used: {GC.GetAllocatedBytesForCurrentThread()}"");
                 }
 
                 if (stream.Position != num)
@@ -151,35 +171,40 @@ namespace Oxide.Plugins
             }
         }
 
-        [HarmonyPatch(typeof(WorldSerialization), nameof(WorldSerialization.Load), typeof(string))]
-        internal class OnWorldLoad_hook
+        [HarmonyPatch(typeof(WorldSerialization), ""Load"")]
+        internal static class OnWorldLoadHook
         {
             [HarmonyPostfix]
-            static void Postfix(WorldSerialization __instance)
+            private static void Postfix(WorldSerialization __instance)
             {
-                var mapData = GetPasswordMap(__instance);
+                MapData? mapData = GetPasswordMap(__instance);
 
                 if (mapData != null)
-                    mapData.data = new byte[0];
+                {
+                    mapData.data = Array.Empty<byte>();
+                }
 
-                var hieght = __instance.GetMap(""hieght"");
+                MapData? height = __instance.GetMap(""hieght"");
 
-                if (hieght != null)
-                    hieght.data = new byte[0];
+                if (height != null)
+                {
+                    height.data = Array.Empty<byte>();
+                }
 
                 for (int i = 0; i < __instance.world.prefabs.Count; i++)
                 {
-                    if (1724395471 == __instance.world.prefabs[i].id)
+                    if (__instance.world.prefabs[i].id == 1724395471)
+                    {
                         continue;
+                    }
 
                     __instance.world.prefabs[i].category = ""Decor"";
                 }
 
-                int D = 0;
-                int A = 0;
+                int removedCount = 0;
+                int addedCount = 0;
 
-
-                if (plugin._root.Value.RemovePrefabs != null && plugin._root.Value.RemovePrefabs.Count > 0)
+                if (plugin?._root?.Value.RemovePrefabs?.Count > 0)
                 {
                     for (int i = __instance.world.prefabs.Count - 1; i >= 0; i--)
                     {
@@ -187,27 +212,31 @@ namespace Oxide.Plugins
                         {
                             try
                             {
-                                if (plugin._root.Value.RemovePrefabs[p].ID == __instance.world.prefabs[i].id && plugin._root.Value.RemovePrefabs[p].P == __instance.world.prefabs[i].position)
+                                if (plugin._root.Value.RemovePrefabs[p].ID == __instance.world.prefabs[i].id &&
+                                    plugin._root.Value.RemovePrefabs[p].P == __instance.world.prefabs[i].position)
                                 {
                                     __instance.world.prefabs.RemoveAt(i);
                                     plugin._root.Value.RemovePrefabs.RemoveAt(p);
-                                    D++;
+                                    removedCount++;
                                     break;
                                 }
                             }
-                            catch { }
+                            catch (Exception ex)
+                            {
+                                Debug.LogError($""Error removing prefab: {ex.Message}"");
+                            }
                         }
                     }
                 }
 
-                if (plugin._root.Value.AddPathData != null && plugin._root.Value.AddPathData.Count > 0)
+                if (plugin?._root?.Value.AddPathData?.Count > 0)
                 {
-                    foreach (var p in plugin._root.Value.AddPathData)
+                    foreach (PathDataModel p in plugin._root.Value.AddPathData)
                     {
-                        var pathData = __instance.world.paths.FirstOrDefault(s => s.name == p.Name);
+                        PathData? pathData = __instance.world.paths.FirstOrDefault(s => s.name == p.Name);
                         if (pathData == null)
                         {
-                            plugin.Puts(""path not found "" + p.Name);
+                            Debug.Log($""Path not found: {p.Name}"");
                             continue;
                         }
 
@@ -215,30 +244,36 @@ namespace Oxide.Plugins
                     }
                 }
 
-                if (plugin._root.Value.AddPrefabs != null && plugin._root.Value.AddPrefabs.Count > 0)
+                if (plugin?._root?.Value.AddPrefabs?.Count > 0)
                 {
-                    foreach (var p in plugin._root.Value.AddPrefabs)
+                    foreach (PA p in plugin._root.Value.AddPrefabs)
                     {
-                        PrefabData pd = new PrefabData();
-                        pd.id = p.ID;
-                        pd.category = p.C;
-                        pd.position = plugin.String2Vector(p.P);
-                        pd.rotation = plugin.String2Vector(p.R);
-                        pd.scale = plugin.String2Vector(p.S);
+                        PrefabData pd = new()
+                        {
+                            id = p.ID,
+                            category = p.C,
+                            position = plugin.String2Vector(p.P),
+                            rotation = plugin.String2Vector(p.R),
+                            scale = plugin.String2Vector(p.S)
+                        };
                         __instance.world.prefabs.Add(pd);
-                        A++;
+                        addedCount++;
                     }
                 }
 
-                if (plugin._root.Value.AllPrefabs != null && plugin._root.Value.AllPrefabs.Count > 0)
+                if (plugin?._root?.Value.AllPrefabs?.Count > 0)
                 {
-                    foreach (var p in plugin._root.Value.AllPrefabs)
+                    foreach (PA p in plugin._root.Value.AllPrefabs)
                     {
-                        var prefab = __instance.world.prefabs.FirstOrDefault(s => s.id == p.ID && s.position == plugin.StringToVector3(p.P) && s.rotation == plugin.StringToVector3(p.R) && s.scale == plugin.StringToVector3(p.S));
+                        PrefabData? prefab = __instance.world.prefabs.FirstOrDefault(s =>
+                            s.id == p.ID &&
+                            s.position == plugin.StringToVector3(p.P) &&
+                            s.rotation == plugin.StringToVector3(p.R) &&
+                            s.scale == plugin.StringToVector3(p.S));
 
                         if (prefab == null)
                         {
-                            plugin.Puts($""Prefab {p.ID} not found"");
+                            Debug.Log($""Prefab {p.ID} not found"");
                         }
                         else
                         {
@@ -247,79 +282,73 @@ namespace Oxide.Plugins
                     }
                 }
 
-                if (plugin._root.Value.AddRE.Count > 0)
+                if (plugin?._root?.Value.AddRE?.Count > 0)
                 {
-                    plugin.Puts(""Loading RustEditData"");
-                    int PC = __instance.world.prefabs.Count;
-                    foreach (var p in plugin._root.Value.AddRE)
+                    Debug.Log(""Loading RustEditData"");
+                    int prefabCount = __instance.world.prefabs.Count;
+                    foreach (RE p in plugin._root.Value.AddRE)
                     {
-                        if (p.C != PC) { plugin.Puts(""Invalid Prefab Count "" + p.C + "" / "" + PC); break; }
+                        if (p.C != prefabCount)
+                        {
+                            Debug.Log($""Invalid Prefab Count {p.C} / {prefabCount}"");
+                            break;
+                        }
                         __instance.AddMap(p.H, p.D);
                     }
                 }
 
-                UnityEngine.Debug.LogWarning(""[Map Protecion] Removed "" + D + "" Spam Prefabs / Restored "" + A + "" Missing Prefabs"");
+                Debug.LogWarning($""[Map Protection] Removed {removedCount} Spam Prefabs / Restored {addedCount} Missing Prefabs"");
             }
 
-            private static MapData GetPasswordMap(WorldSerialization worldSerialization)
+            private static MapData? GetPasswordMap(WorldSerialization worldSerialization)
             {
                 int prefabsCount = worldSerialization.world.prefabs.Count;
-                return worldSerialization.world.maps.FirstOrDefault(s => s.name == OPIPGDGHLCP(""mappassword"", prefabsCount) || s.name == EIGDJDKLLED(""mappassword"", prefabsCount));
+                return worldSerialization.world.maps.FirstOrDefault(s =>
+                    s.name == OPIPGDGHLCP(""mappassword"", prefabsCount) ||
+                    s.name == EIGDJDKLLED(""mappassword"", prefabsCount));
             }
 
-            private static string EIGDJDKLLED(string KBJLCHGLCPN, int FNCNKFNPJAB)
+            private static string EIGDJDKLLED(string input, int count)
             {
-                string password = FNCNKFNPJAB.ToString();
-                byte[] bytes = Encoding.Unicode.GetBytes(KBJLCHGLCPN);
-                using (Aes aes = Aes.Create())
-                {
-                    Rfc2898DeriveBytes rfc2898DeriveBytes = new Rfc2898DeriveBytes(password, new byte[]
-                    {
-                73,
-                118,
-                97,
-                110,
-                32,
-                77,
-                101,
-                100,
-                118,
-                101,
-                100,
-                101,
-                118
-                    });
-                    aes.Key = rfc2898DeriveBytes.GetBytes(32);
-                    aes.IV = rfc2898DeriveBytes.GetBytes(16);
-                    using (MemoryStream memoryStream = new MemoryStream())
-                    {
-                        using (CryptoStream cryptoStream = new CryptoStream(memoryStream, aes.CreateEncryptor(), CryptoStreamMode.Write))
-                        {
-                            cryptoStream.Write(bytes, 0, bytes.Length);
-                            cryptoStream.Close();
-                        }
-                        KBJLCHGLCPN = Convert.ToBase64String(memoryStream.ToArray());
-                    }
-                }
-                return KBJLCHGLCPN;
+                string password = count.ToString(CultureInfo.InvariantCulture);
+                byte[] bytes = Encoding.Unicode.GetBytes(input);
+                using Aes aes = Aes.Create();
+                using Rfc2898DeriveBytes deriveBytes = new(password, ""Ivan Medvedev""u8.ToArray(), 100000, HashAlgorithmName.SHA512);
+                aes.Key = deriveBytes.GetBytes(32);
+                aes.IV = deriveBytes.GetBytes(16);
+                using MemoryStream memoryStream = new();
+                using CryptoStream cryptoStream = new(memoryStream, aes.CreateEncryptor(), CryptoStreamMode.Write);
+                cryptoStream.Write(bytes, 0, bytes.Length);
+                return Convert.ToBase64String(memoryStream.ToArray());
             }
 
-            private static string OPIPGDGHLCP(string JKNFEDNIELG, int FNCNKFNPJAB)
+            private static string OPIPGDGHLCP(string input, int count)
             {
-                StringBuilder stringBuilder = new StringBuilder(JKNFEDNIELG);
-                StringBuilder stringBuilder2 = new StringBuilder(JKNFEDNIELG.Length);
-                for (int i = 0; i < JKNFEDNIELG.Length; i++)
+                StringBuilder stringBuilder = new(input);
+                StringBuilder result = new(input.Length);
+                for (int i = 0; i < input.Length; i++)
                 {
                     char c = stringBuilder[i];
-                    c = (char)((int)c ^ FNCNKFNPJAB);
-                    stringBuilder2.Append(c);
+                    c = (char)(c ^ count);
+                    _ = result.Append(c);
                 }
-                return stringBuilder2.ToString();
+                return result.ToString();
             }
         }
 
-        class RootModel
+        private sealed class RootModel
         {
+            public RootModel()
+            {
+                RemovePrefabs = new List<PD>();
+                AddPrefabs = new List<PA>();
+                AddRE = new List<RE>();
+                AllPrefabs = new List<PA>();
+                AddPathData = new List<PathDataModel>();
+                DownloadUrl = string.Empty;
+                Size = 4000;
+            }
+
             public List<PD> RemovePrefabs { get; set; }
             public List<PA> AddPrefabs { get; set; }
             public List<RE> AddRE { get; set; }
@@ -329,13 +358,31 @@ namespace Oxide.Plugins
             public string DownloadUrl { get; set; }
         }
 
-        public class RE { public string H; public byte[] D; public int C; }
-        public class PD { public uint ID; public Vector3 P; }
-        public class PA { public uint ID; public string C; public string P; public string R; public string S; }
-
-        internal class PathDataModel
+        public sealed class RE
         {
-            public string Name { get; set; }
+            public required string H;
+            public required byte[] D;
+            public int C;
+        }
+
+        public sealed class PD
+        {
+            public uint ID;
+            public Vector3 P;
+        }
+
+        public sealed class PA
+        {
+            public uint ID;
+            public required string C;
+            public required string P;
+            public required string R;
+            public required string S;
+        }
+
+        internal sealed class PathDataModel
+        {
+            public required string Name { get; set; }
             public int Hierarchy { get; set; }
         }
     }
