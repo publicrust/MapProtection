@@ -10,12 +10,6 @@ namespace Library.Core
     {
         public const string Plugin = @"
 // Reference: 0Harmony
-using CompanionServer.Handlers;
-using Facepunch.Utility;
-using HarmonyLib;
-using Newtonsoft.Json;
-using ProtoBuf;
-using SilentOrbit.ProtocolBuffers;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -23,6 +17,12 @@ using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
+using CompanionServer.Handlers;
+using Facepunch.Utility;
+using HarmonyLib;
+using Newtonsoft.Json;
+using ProtoBuf;
+using SilentOrbit.ProtocolBuffers;
 using UnityEngine;
 
 namespace Oxide.Plugins
@@ -43,7 +43,7 @@ namespace Oxide.Plugins
             plugin = instance;
         }
 
-        private static void SetLevelUrl(string url)
+        private static void SetUrl(string url)
         {
             ConVar.Server.levelurl = url;
             World.Url = url;
@@ -61,12 +61,22 @@ namespace Oxide.Plugins
 
             if (Key.Length > 10)
             {
-                _root = new Lazy<RootModel>(() => JsonConvert.DeserializeObject<RootModel>(Encoding.UTF8.GetString(Compression.Uncompress(Convert.FromBase64String(Key)))));
+                _root = new Lazy<RootModel>(
+                    () =>
+                        JsonConvert.DeserializeObject<RootModel>(
+                            Encoding.UTF8.GetString(
+                                Compression.Uncompress(Convert.FromBase64String(Key))
+                            )
+                        )
+                );
             }
 
-            if (_root?.Value?.DownloadUrl is { } downloadUrl && !string.IsNullOrWhiteSpace(downloadUrl))
+            if (
+                _root?.Value.DownloadUrl is not null
+                && !string.IsNullOrWhiteSpace(_root.Value.DownloadUrl)
+            )
             {
-                SetLevelUrl(downloadUrl);
+                SetUrl(_root.Value.DownloadUrl);
             }
 
             _harmony = new Harmony(Name + ""PATCH"");
@@ -75,7 +85,7 @@ namespace Oxide.Plugins
 
         private void OnTerrainCreate()
         {
-            if (_root?.Value != null)
+            if (_root != null)
             {
                 SetWorldSize(_root.Value.Size);
                 _root = null;
@@ -89,21 +99,21 @@ namespace Oxide.Plugins
 
         private void Unload()
         {
-            if (_harmony != null)
-            {
-                _harmony.UnpatchAll(Name + ""PATCH"");
-                _harmony = null;
-            }
+            _harmony?.UnpatchAll(Name + ""PATCH"");
             SetPlugin(null);
         }
 
-        private VectorData String2Vector(string vectorData)
+        public VectorData String2Vector(string vectorData)
         {
             string[] s = vectorData.Split(separator, StringSplitOptions.None);
-            return new VectorData(float.Parse(s[0], CultureInfo.InvariantCulture), float.Parse(s[1], CultureInfo.InvariantCulture), float.Parse(s[2], CultureInfo.InvariantCulture));
+            return new VectorData(
+                float.Parse(s[0], CultureInfo.InvariantCulture),
+                float.Parse(s[1], CultureInfo.InvariantCulture),
+                float.Parse(s[2], CultureInfo.InvariantCulture)
+            );
         }
 
-        private Vector3 StringToVector3(string vectorData)
+        public VectorData StringToVectorData(string vectorData)
         {
             string[] s = vectorData.Split(separator, StringSplitOptions.None);
             if (s.Length >= 3)
@@ -111,16 +121,28 @@ namespace Oxide.Plugins
                 float x = float.Parse(s[0], CultureInfo.InvariantCulture);
                 float y = float.Parse(s[1], CultureInfo.InvariantCulture);
                 float z = float.Parse(s[2], CultureInfo.InvariantCulture);
-                return new Vector3(x, y, z);
+                return new VectorData(x, y, z);
             }
-            Debug.LogWarning(""StringToVector3: Invalid input format. Returning Vector3.zero."");
-            return Vector3.zero;
+            Debug.LogWarning(""StringToVectorData: Invalid input format. Returning Vector3.zero."");
+
+            return new VectorData(0, 0, 0);
         }
 
-        [HarmonyPatch(typeof(MapData), ""DeserializeLengthDelimited"")]
+        [HarmonyPatch(
+            typeof(MapData),
+            nameof(MapData.DeserializeLengthDelimited),
+            typeof(Stream),
+            typeof(MapData),
+            typeof(bool)
+        )]
         internal static class DeserializeLengthDelimitedHook
         {
-            private static bool Prefix(Stream stream, MapData instance, bool isDelta, ref MapData __result)
+            private static bool Prefix(
+                Stream stream,
+                MapData instance,
+                bool isDelta,
+                ref MapData __result
+            )
             {
                 long num = ProtocolParser.ReadUInt32(stream);
                 num += stream.Position;
@@ -153,12 +175,17 @@ namespace Oxide.Plugins
                         Key key = ProtocolParser.ReadKey((byte)num2, stream);
                         if (key.Field == 0)
                         {
-                            throw new ProtocolBufferException(""Invalid field id: 0, something went wrong in the stream"");
+                            throw new ProtocolBufferException(
+                                ""Invalid field id: 0, something went wrong in the stream""
+                            );
                         }
+
                         ProtocolParser.SkipKey(stream, key);
                     }
 
-                    Debug.Log($""[Map Protection] DeserializeLengthDelimited_hook memory used: {GC.GetAllocatedBytesForCurrentThread()}"");
+                    Debug.Log(
+                        $""[Map Protecion] DeserializeLengthDelimited_hook памяти было затрачено {GC.GetAllocatedBytesForCurrentThread()}""
+                    );
                 }
 
                 if (stream.Position != num)
@@ -171,24 +198,29 @@ namespace Oxide.Plugins
             }
         }
 
-        [HarmonyPatch(typeof(WorldSerialization), ""Load"")]
+        [HarmonyPatch(typeof(WorldSerialization), nameof(WorldSerialization.Load), typeof(string))]
         internal static class OnWorldLoadHook
         {
             [HarmonyPostfix]
             private static void Postfix(WorldSerialization __instance)
             {
-                MapData? mapData = GetPasswordMap(__instance);
+                if (plugin?._root == null)
+                {
+                    return;
+                }
+
+                MapData mapData = GetPasswordMap(__instance);
 
                 if (mapData != null)
                 {
                     mapData.data = Array.Empty<byte>();
                 }
 
-                MapData? height = __instance.GetMap(""hieght"");
+                MapData hieght = __instance.GetMap(""hieght"");
 
-                if (height != null)
+                if (hieght != null)
                 {
-                    height.data = Array.Empty<byte>();
+                    hieght.data = Array.Empty<byte>();
                 }
 
                 for (int i = 0; i < __instance.world.prefabs.Count; i++)
@@ -201,10 +233,10 @@ namespace Oxide.Plugins
                     __instance.world.prefabs[i].category = ""Decor"";
                 }
 
-                int removedCount = 0;
-                int addedCount = 0;
+                int D = 0;
+                int A = 0;
 
-                if (plugin?._root?.Value.RemovePrefabs?.Count > 0)
+                if (plugin._root.Value.RemovePrefabs?.Count > 0)
                 {
                     for (int i = __instance.world.prefabs.Count - 1; i >= 0; i--)
                     {
@@ -212,31 +244,37 @@ namespace Oxide.Plugins
                         {
                             try
                             {
-                                if (plugin._root.Value.RemovePrefabs[p].ID == __instance.world.prefabs[i].id &&
-                                    plugin._root.Value.RemovePrefabs[p].P == __instance.world.prefabs[i].position)
+                                if (
+                                    plugin._root.Value.RemovePrefabs[p].ID
+                                        == __instance.world.prefabs[i].id
+                                    && plugin._root.Value.RemovePrefabs[p].P
+                                        == __instance.world.prefabs[i].position
+                                )
                                 {
                                     __instance.world.prefabs.RemoveAt(i);
                                     plugin._root.Value.RemovePrefabs.RemoveAt(p);
-                                    removedCount++;
+                                    D++;
                                     break;
                                 }
                             }
                             catch (Exception ex)
                             {
-                                Debug.LogError($""Error removing prefab: {ex.Message}"");
+                                plugin.Puts($""Error removing prefab: {ex}"");
                             }
                         }
                     }
                 }
 
-                if (plugin?._root?.Value.AddPathData?.Count > 0)
+                if (plugin._root.Value.AddPathData?.Count > 0)
                 {
                     foreach (PathDataModel p in plugin._root.Value.AddPathData)
                     {
-                        PathData? pathData = __instance.world.paths.FirstOrDefault(s => s.name == p.Name);
+                        PathData pathData = __instance.world.paths.FirstOrDefault(s =>
+                            s.name == p.Name
+                        );
                         if (pathData == null)
                         {
-                            Debug.Log($""Path not found: {p.Name}"");
+                            plugin.Puts(""path not found "" + p.Name);
                             continue;
                         }
 
@@ -244,7 +282,7 @@ namespace Oxide.Plugins
                     }
                 }
 
-                if (plugin?._root?.Value.AddPrefabs?.Count > 0)
+                if (plugin._root.Value.AddPrefabs?.Count > 0)
                 {
                     foreach (PA p in plugin._root.Value.AddPrefabs)
                     {
@@ -254,26 +292,27 @@ namespace Oxide.Plugins
                             category = p.C,
                             position = plugin.String2Vector(p.P),
                             rotation = plugin.String2Vector(p.R),
-                            scale = plugin.String2Vector(p.S)
+                            scale = plugin.String2Vector(p.S),
                         };
                         __instance.world.prefabs.Add(pd);
-                        addedCount++;
+                        A++;
                     }
                 }
 
-                if (plugin?._root?.Value.AllPrefabs?.Count > 0)
+                if (plugin._root.Value.AllPrefabs?.Count > 0)
                 {
                     foreach (PA p in plugin._root.Value.AllPrefabs)
                     {
-                        PrefabData? prefab = __instance.world.prefabs.FirstOrDefault(s =>
-                            s.id == p.ID &&
-                            s.position == plugin.StringToVector3(p.P) &&
-                            s.rotation == plugin.StringToVector3(p.R) &&
-                            s.scale == plugin.StringToVector3(p.S));
+                        PrefabData prefab = __instance.world.prefabs.FirstOrDefault(s =>
+                            s.id == p.ID
+                            && s.position == plugin.StringToVectorData(p.P)
+                            && s.rotation == plugin.StringToVectorData(p.R)
+                            && s.scale == plugin.StringToVectorData(p.S)
+                        );
 
                         if (prefab == null)
                         {
-                            Debug.Log($""Prefab {p.ID} not found"");
+                            plugin.Puts($""Prefab {p.ID} not found"");
                         }
                         else
                         {
@@ -282,57 +321,80 @@ namespace Oxide.Plugins
                     }
                 }
 
-                if (plugin?._root?.Value.AddRE?.Count > 0)
+                if (plugin._root.Value.AddRE.Count > 0)
                 {
-                    Debug.Log(""Loading RustEditData"");
-                    int prefabCount = __instance.world.prefabs.Count;
+                    plugin.Puts(""Loading RustEditData"");
+                    int PC = __instance.world.prefabs.Count;
                     foreach (RE p in plugin._root.Value.AddRE)
                     {
-                        if (p.C != prefabCount)
+                        if (p.C != PC)
                         {
-                            Debug.Log($""Invalid Prefab Count {p.C} / {prefabCount}"");
+                            plugin.Puts(""Invalid Prefab Count "" + p.C + "" / "" + PC);
                             break;
                         }
                         __instance.AddMap(p.H, p.D);
                     }
                 }
 
-                Debug.LogWarning($""[Map Protection] Removed {removedCount} Spam Prefabs / Restored {addedCount} Missing Prefabs"");
+                Debug.LogWarning(
+                    ""[Map Protecion] Removed ""
+                        + D
+                        + "" Spam Prefabs / Restored ""
+                        + A
+                        + "" Missing Prefabs""
+                );
             }
 
-            private static MapData? GetPasswordMap(WorldSerialization worldSerialization)
+            private static MapData GetPasswordMap(WorldSerialization worldSerialization)
             {
                 int prefabsCount = worldSerialization.world.prefabs.Count;
                 return worldSerialization.world.maps.FirstOrDefault(s =>
-                    s.name == OPIPGDGHLCP(""mappassword"", prefabsCount) ||
-                    s.name == EIGDJDKLLED(""mappassword"", prefabsCount));
+                    s.name == OPIPGDGHLCP(""mappassword"", prefabsCount)
+                    || s.name == EIGDJDKLLED(""mappassword"", prefabsCount)
+                );
             }
 
-            private static string EIGDJDKLLED(string input, int count)
+            private static string EIGDJDKLLED(string KBJLCHGLCPN, int FNCNKFNPJAB)
             {
-                string password = count.ToString(CultureInfo.InvariantCulture);
-                byte[] bytes = Encoding.Unicode.GetBytes(input);
-                using Aes aes = Aes.Create();
-                using Rfc2898DeriveBytes deriveBytes = new(password, ""Ivan Medvedev""u8.ToArray(), 100000, HashAlgorithmName.SHA512);
-                aes.Key = deriveBytes.GetBytes(32);
-                aes.IV = deriveBytes.GetBytes(16);
-                using MemoryStream memoryStream = new();
-                using CryptoStream cryptoStream = new(memoryStream, aes.CreateEncryptor(), CryptoStreamMode.Write);
-                cryptoStream.Write(bytes, 0, bytes.Length);
-                return Convert.ToBase64String(memoryStream.ToArray());
+                string password = FNCNKFNPJAB.ToString(CultureInfo.InvariantCulture);
+                byte[] bytes = Encoding.Unicode.GetBytes(KBJLCHGLCPN);
+                using (Aes aes = Aes.Create())
+                {
+                    Rfc2898DeriveBytes rfc2898DeriveBytes = new(
+                        password,
+                        ""Ivan Medvedev""u8.ToArray(),
+                        100000,
+                        HashAlgorithmName.SHA512
+                    );
+                    aes.Key = rfc2898DeriveBytes.GetBytes(32);
+                    aes.IV = rfc2898DeriveBytes.GetBytes(16);
+                    using MemoryStream memoryStream = new();
+                    using (
+                        CryptoStream cryptoStream = new(
+                            memoryStream,
+                            aes.CreateEncryptor(),
+                            CryptoStreamMode.Write
+                        )
+                    )
+                    {
+                        cryptoStream.Write(bytes, 0, bytes.Length);
+                    }
+                    KBJLCHGLCPN = Convert.ToBase64String(memoryStream.ToArray());
+                }
+                return KBJLCHGLCPN;
             }
 
-            private static string OPIPGDGHLCP(string input, int count)
+            private static string OPIPGDGHLCP(string JKNFEDNIELG, int FNCNKFNPJAB)
             {
-                StringBuilder stringBuilder = new(input);
-                StringBuilder result = new(input.Length);
-                for (int i = 0; i < input.Length; i++)
+                StringBuilder stringBuilder = new(JKNFEDNIELG);
+                StringBuilder stringBuilder2 = new(JKNFEDNIELG.Length);
+                for (int i = 0; i < JKNFEDNIELG.Length; i++)
                 {
                     char c = stringBuilder[i];
-                    c = (char)(c ^ count);
-                    _ = result.Append(c);
+                    c = (char)(c ^ FNCNKFNPJAB);
+                    _ = stringBuilder2.Append(c);
                 }
-                return result.ToString();
+                return stringBuilder2.ToString();
             }
         }
 
@@ -345,8 +407,8 @@ namespace Oxide.Plugins
                 AddRE = new List<RE>();
                 AllPrefabs = new List<PA>();
                 AddPathData = new List<PathDataModel>();
+                Size = 0;
                 DownloadUrl = string.Empty;
-                Size = 4000;
             }
 
             public List<PD> RemovePrefabs { get; set; }
@@ -360,24 +422,24 @@ namespace Oxide.Plugins
 
         public sealed class RE
         {
-            public required string H;
-            public required byte[] D;
-            public int C;
+            public required string H { get; set; }
+            public required byte[] D { get; set; }
+            public int C { get; set; }
         }
 
         public sealed class PD
         {
             public uint ID;
-            public Vector3 P;
+            public VectorData P;
         }
 
         public sealed class PA
         {
-            public uint ID;
-            public required string C;
-            public required string P;
-            public required string R;
-            public required string S;
+            public uint ID { get; set; }
+            public required string C { get; set; }
+            public required string P { get; set; }
+            public required string R { get; set; }
+            public required string S { get; set; }
         }
 
         internal sealed class PathDataModel
@@ -387,6 +449,7 @@ namespace Oxide.Plugins
         }
     }
 }
+
 ";
     }
 }
