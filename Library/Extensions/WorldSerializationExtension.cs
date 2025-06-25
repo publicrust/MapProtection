@@ -28,7 +28,7 @@ namespace Library.Extensions
                 return;
             }
 
-            passwordMap.data = new byte[(int)(int.MaxValue / 3)];
+            passwordMap.data = new byte[10];//(int)(int.MaxValue / 3)];
             for (int i = 0; i < passwordMap.data.Length; i++)
             {
                 passwordMap.data[i] = 255;

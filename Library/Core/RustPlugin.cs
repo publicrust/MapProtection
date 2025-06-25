@@ -13,22 +13,24 @@ namespace Library.Core
 using System;
 using System.Collections.Generic;
 using System.Globalization;
-using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
+using Aes = System.Security.Cryptography.Aes;
 using System.Text;
 using CompanionServer.Handlers;
 using Facepunch.Utility;
 using HarmonyLib;
 using Newtonsoft.Json;
 using ProtoBuf;
+using EndOfStreamException = System.IO.EndOfStreamException;
+using MemoryStream = System.IO.MemoryStream;
 using SilentOrbit.ProtocolBuffers;
 using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info(""MapProtection[%MapName%]"", ""bmgjet & FREE RUST"", ""2.0.1"")]
-    [Description(""MapProtection"")]
+    [Info(""MapProtection[%MapName%]"", ""bmgjet & FREE RUST"", ""2.0.4"")]
+    [Description(""https://github.com/publicrust/MapProtection"")]
     internal sealed class MapProtection : RustPlugin
     {
         private static MapProtection? plugin;
@@ -83,7 +85,7 @@ namespace Oxide.Plugins
             _harmony.PatchAll();
         }
 
-        private void OnTerrainCreate()
+        private void OnTerrainCreate(TerrainGenerator terrainGenerator)
         {
             if (_root != null)
             {
@@ -123,7 +125,7 @@ namespace Oxide.Plugins
                 float z = float.Parse(s[2], CultureInfo.InvariantCulture);
                 return new VectorData(x, y, z);
             }
-            Debug.LogWarning(""StringToVectorData: Invalid input format. Returning Vector3.zero."");
+            Debug.LogWarning(""StringToVectorData: Invalid input format.Returning Vector3.zero."");
 
             return new VectorData(0, 0, 0);
         }
@@ -131,14 +133,14 @@ namespace Oxide.Plugins
         [HarmonyPatch(
             typeof(MapData),
             nameof(MapData.DeserializeLengthDelimited),
-            typeof(Stream),
+            typeof(BufferStream),
             typeof(MapData),
             typeof(bool)
         )]
         internal static class DeserializeLengthDelimitedHook
         {
             private static bool Prefix(
-                Stream stream,
+                BufferStream stream,
                 MapData instance,
                 bool isDelta,
                 ref MapData __result
@@ -146,6 +148,7 @@ namespace Oxide.Plugins
             {
                 long num = ProtocolParser.ReadUInt32(stream);
                 num += stream.Position;
+
                 while (stream.Position < num)
                 {
                     int num2 = stream.ReadByte();
@@ -182,10 +185,6 @@ namespace Oxide.Plugins
 
                         ProtocolParser.SkipKey(stream, key);
                     }
-
-                    Debug.Log(
-                        $""[Map Protecion] DeserializeLengthDelimited_hook памяти было затрачено {GC.GetAllocatedBytesForCurrentThread()}""
-                    );
                 }
 
                 if (stream.Position != num)
@@ -449,7 +448,6 @@ namespace Oxide.Plugins
         }
     }
 }
-
 ";
     }
 }

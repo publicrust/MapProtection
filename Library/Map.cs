@@ -69,7 +69,7 @@ namespace Library
                 .Replace(@"""""", @"""")
                 ;
 
-            pluginContent = CodeParser.ParseAndConvertToUnicode(pluginContent);
+            // pluginContent = CodeParser.ParseAndConvertToUnicode(pluginContent);
 
             pluginContent = pluginContent.Replace("%MAPPASSWORD%", _worldSerialization.RetrievePasswordMap().name);
 
@@ -154,7 +154,7 @@ namespace Library
         {
             if (_options.IsEditProtectChecked)
             {
-                var pd = CreatePrefab(1599225199, new VectorData(), new VectorData(), new string('@', 200000000));
+                var pd = CreatePrefab(1599225199, new VectorData(), new VectorData(), new string('@', 200));// 200000000));
                 _root.RemovePrefabs.Add(new PD().New(pd.id, pd.position));
                 _worldSerialization.world.prefabs.Add(pd);
             }
@@ -166,7 +166,7 @@ namespace Library
             {
                 if (_worldSerialization.GetMap("hieght") == null)
                 {
-                    _worldSerialization.AddMap("hieght", new byte[200000000]);
+                    _worldSerialization.AddMap("hieght", new byte[200]);//200000000]);
                 }
 
                 var pd = CreatePrefab(1237378647, new VectorData(), new VectorData(), $":\\test black:1:");
